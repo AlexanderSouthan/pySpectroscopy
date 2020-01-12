@@ -1,2 +1,2 @@
-# pySpectroscopy
-Analysis of spectral data
+# pyAnalytics
+Package for preprocessing and analysis of analytical data. 
