@@ -13,8 +13,6 @@ from tqdm import tqdm
 ############### import own modules###############
 from data_objects.spectroscopy_data import spectroscopy_data
 from data_objects.confocal_data import confocal_data as confocal_data
-import regression.nonlinear_regression as nl_reg
-import preprocessing.baseline_correction as baseline_correction
 #################################################
 
 class raman_image(spectroscopy_data,confocal_data):
