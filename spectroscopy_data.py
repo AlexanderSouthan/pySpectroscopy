@@ -122,13 +122,13 @@ class spectroscopy_data:
         assert alg in baseline_types,'baseline type unknown'
 
         if alg == baseline_types[0]:
-            self.baseline_data[alg] = pd.DataFrame(baseline_correction.ALSS_baseline(active_image.values,lam,p,n_iter,conv_crit),index = active_image.index,columns = active_image.columns)
+            self.baseline_data[alg] = pd.DataFrame(baseline_correction.generate_baseline(active_image.values, baseline_types[0], lam=lam,p=p,n_iter=n_iter,conv_crit=conv_crit),index = active_image.index,columns = active_image.columns)
         elif alg == baseline_types[1]:
-            self.baseline_data[alg] = pd.DataFrame(baseline_correction.iALSS_baseline(active_image.values,active_image.columns.to_numpy(),lam,lam_1,p,n_iter,conv_crit),index = active_image.index,columns = active_image.columns)
+            self.baseline_data[alg] = pd.DataFrame(baseline_correction.generate_baseline(active_image.values, baseline_types[1], wavenumbers=active_image.columns.to_numpy(),lam=lam,lam_1=lam_1,p=p,n_iter=n_iter,conv_crit=conv_crit),index = active_image.index,columns = active_image.columns)
         elif alg == baseline_types[2]:
-            self.baseline_data[alg] = pd.DataFrame(baseline_correction.drPLS_baseline(active_image.values,lam,eta,n_iter,conv_crit),index = active_image.index,columns = active_image.columns)
+            self.baseline_data[alg] = pd.DataFrame(baseline_correction.generate_baseline(active_image.values, baseline_types[2], lam=lam, eta=eta, n_iter=n_iter, conv_crit=conv_crit),index = active_image.index,columns = active_image.columns)
         elif alg == baseline_types[3]:
-            self.baseline_data[alg] = pd.DataFrame(baseline_correction.SNIP_baseline(active_image.values,n_iter),index = active_image.index,columns = active_image.columns)
+            self.baseline_data[alg] = pd.DataFrame(baseline_correction.generate_baseline(active_image.values, baseline_types[3], n_iter=n_iter),index = active_image.index,columns = active_image.columns)
 
         corrected_data = active_image - self.baseline_data[alg]
         return corrected_data.round(decimals=6)
