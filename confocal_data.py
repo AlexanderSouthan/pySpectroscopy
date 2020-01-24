@@ -150,13 +150,6 @@ class confocal_data:
                 
                 curr_dataset.to_csv(export_path + curr_column + '_' + axis + '_slice_' + str(curr_coord) + '.txt',sep='\t')
         
-    def export_spectra(self,export_path,export_name,active_image = None):
-        active_image = self.check_active_image(active_image)
-        
-        active_image = self.__decode_image_index(active_image)
-        
-        active_image.to_csv(export_path + export_name + '.txt',sep='\t',header=True)
-        
     def __decode_image_index(self,active_image):
         active_image_copy = active_image.copy()
         active_image_index_frame = active_image_copy.index.to_frame()

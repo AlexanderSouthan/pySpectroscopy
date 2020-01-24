@@ -9,11 +9,11 @@ import pandas as pd
 from sklearn import preprocessing
 from tqdm import tqdm
 from scipy.integrate import cumtrapz
-from scipy.signal import savgol_filter  # ,find_peaks
 from sklearn.decomposition import PCA
 
 # import own packagaes ######################
 import preprocessing.baseline_correction as baseline_correction
+import preprocessing.smoothing as smooth_data
 import regression.nonlinear_regression as nl_reg
 #############################################
 
@@ -114,42 +114,6 @@ class spectroscopy_data:
                                            z_clipping_mask)]
         return clipped_data
 
-    def savitzky_golay(self, deriv=0, savgol_points=9, poly_order=2,
-                       active_spectra=None):
-        active_spectra = self.check_active_spectra(active_spectra)
-
-        sav_gol_filtered_data = pd.DataFrame(
-            savgol_filter(
-                active_spectra, 1+2*savgol_points, poly_order, deriv=deriv,
-                axis=1), index=active_spectra.index,
-            columns=active_spectra.columns).round(decimals=6)
-        return sav_gol_filtered_data
-
-    def median_filter(self, window=5, active_spectra=None):
-        active_spectra = self.check_active_spectra(active_spectra)
-
-        edge_value_count = int((window-1)/2)
-        median_filtered_data = active_spectra.rolling(
-            window, axis=1, center=True).median().iloc[
-                :, edge_value_count:-edge_value_count]
-
-        return median_filtered_data.round(decimals=6)
-
-    def pca_smoothing(self, pca_components=3, active_spectra=None):
-        active_spectra = self.check_active_spectra(active_spectra)
-
-        pca_results = self.principal_component_analysis(
-            pca_components, active_spectra=active_spectra)
-        # pca_result is also calculated in multi2monochrome,
-        # possibly it can be bundled in one place
-
-        reconstructed_pca_image = pd.DataFrame(
-            np.dot(pca_results['scores'], pca_results['loadings'])
-            + self.mean_spectrum(active_spectra=active_spectra).values,
-            index=active_spectra.index, columns=active_spectra.columns)
-
-        return reconstructed_pca_image
-
     def integrate_image(self, active_spectra=None):
         active_spectra = self.check_active_spectra(active_spectra)
 
@@ -158,6 +122,16 @@ class spectroscopy_data:
             index=active_spectra.index, columns=active_spectra.columns
             ).round(decimals=6)
         return hyperspectral_image_integrated
+
+
+    def smoothing(self, mode, active_spectra=None, **kwargs):
+        active_spectra = self.check_active_spectra(active_spectra)
+
+        smoothed_data = pd.DataFrame(smooth_data.smoothing(
+                active_spectra.values, mode=mode, **kwargs), index=active_spectra.index,
+                columns=active_spectra.columns).round(decimals=6)
+
+        return smoothed_data
 
     def baseline_correction(self, lam=100, lam_1=100, p=0.01, eta=0.5,
                             n_iter=100, conv_crit=0.001, active_spectra=None,
@@ -313,3 +287,11 @@ class spectroscopy_data:
 #                           for row in active_spectra.values]
 #
 #         return processed_data
+
+####################################
+# export methods
+####################################
+    def export_spectra(self,export_path,export_name,active_spectra = None):
+        active_spectra = self.check_active_spectra(active_spectra)
+        
+        active_spectra.to_csv(export_path + export_name + '.txt',sep='\t',header=True)
