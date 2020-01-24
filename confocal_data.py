@@ -19,24 +19,24 @@ class confocal_data:
     
     def get_coord_values(self,value_sort,axis='x',active_image = None):
         active_image = self.check_active_image(active_image)
-        
+
         if axis == 'x':
             return_value = active_image.index.get_level_values('x_coded').drop_duplicates().to_numpy().astype(int)
         elif axis == 'y':
             return_value = active_image.index.get_level_values('y_coded').drop_duplicates().to_numpy().astype(int)
         elif axis == 'z':
             return_value = active_image.index.get_level_values('z_coded').drop_duplicates().to_numpy().astype(int)
-        
+
         if value_sort == 'real':
             return_value = return_value / self.coord_conversion_factor
-            
+
         return return_value
-    
+
     def check_active_image(self,active_image):
         if active_image is None:
             active_image = self.hyperspectral_image
         return active_image
-    
+
     ###########################
 #####     imaging methods     #################################################
     ###########################
@@ -47,38 +47,38 @@ class confocal_data:
                          lower_bounds = None,upper_bounds = None): #convert multichrome images to monochrome
 
         active_image = self.check_active_image(active_image)
-        
+
         if mode == 'int_at_point':
             self.monochrome_image = active_image.loc[:,[active_image.columns[np.argmin(np.abs(active_image.columns - wavenumber1))]]]
             self.monochrome_image.columns = [mode + '_' + str(wavenumber1)]
         elif mode in ['sig_to_base','sig_to_axis']:
-            self.hyperspectral_image_integrated = self.integrate_image(active_image=active_image)
+            self.hyperspectral_image_integrated = self.integrate_image(active_spectra=active_image)
             closest_index_lower = np.argmin(np.abs(self.hyperspectral_image_integrated.columns-wavenumber1))
             closest_index_upper = np.argmin(np.abs(self.hyperspectral_image_integrated.columns-wavenumber2))
-            
+
             baseline_x_array = np.array([self.hyperspectral_image_integrated.columns[closest_index_lower],self.hyperspectral_image_integrated.columns[closest_index_upper]])
             baseline_y_array = active_image.loc[:,baseline_x_array]
             self.area_under_baseline = trapz(baseline_y_array,x=baseline_x_array) if mode == 'sig_to_base' else 0
-            
+
             self.monochrome_image = self.hyperspectral_image_integrated.iloc[:,closest_index_lower].values-self.hyperspectral_image_integrated.iloc[:,closest_index_upper].values - self.area_under_baseline
             self.monochrome_image = pd.DataFrame(self.monochrome_image,index=active_image.index,columns=[mode + '_' + str(wavenumber1) + '_' + str(wavenumber2)])
         elif mode == 'pca':
-            self.pca_results = self.principal_component_analysis(pca_components,active_image=active_image)
+            self.pca_results = self.principal_component_analysis(pca_components,active_spectra=active_image)
             self.monochrome_image = self.pca_results['scores']
-            
+
             #reconstruction_pca_components = 3
             #self.reconstructed_pca_image = pd.DataFrame(np.dot(self.pca_results['scores'].iloc[:,0:reconstruction_pca_components],
             #                                self.pca_results['loadings'].iloc[0:reconstruction_pca_components,:])
             #                                + self.mean_spectrum(active_image = active_image).values,
             #                                index = active_image.index,columns = active_image.columns)
         elif mode == 'ref_spec_fit':
-            self.monochrome_image = self.reference_spectra_fit(ref_spec,fit_mode,max_iter,initial_guess,lower_bounds,upper_bounds,active_image = active_image)
+            self.monochrome_image = self.reference_spectra_fit(ref_spec,fit_mode,max_iter,initial_guess,lower_bounds,upper_bounds,active_spectra = active_image)
             self.fitted_spectra = pd.DataFrame(np.dot(self.monochrome_image.values,ref_spec.values),index = self.monochrome_image.index,columns = ref_spec.columns)
         else:
             self.monochrome_image = pd.DataFrame(np.zeros((len(active_image.index),1)),index=active_image.index,columns=['empty image'])
-            
+
         return self.monochrome_image
-    
+
     def generate_intensity_projections(self,col_index):
         """Generates maximum intensity projection from numpy array with 8-bit images. 
         Export is optional if export path and file name are given. """
