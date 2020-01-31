@@ -11,8 +11,8 @@ import spc
 from tqdm import tqdm
 
 # import own modules#############################
-from data_objects.spectroscopy_data import spectroscopy_data
-from data_objects.confocal_data import confocal_data as confocal_data
+from .spectroscopy_data import spectroscopy_data
+from .confocal_data import confocal_data as confocal_data
 #################################################
 
 class raman_image(spectroscopy_data, confocal_data):

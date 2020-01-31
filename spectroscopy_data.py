@@ -12,9 +12,9 @@ from scipy.integrate import cumtrapz
 from sklearn.decomposition import PCA
 
 # import own packagaes ######################
-import preprocessing.baseline_correction as baseline_correction
-import preprocessing.smoothing as smooth_data
-import regression.nonlinear_regression as nl_reg
+import pyPreprocessing.baseline_correction as baseline_correction
+import pyPreprocessing.smoothing as smooth_data
+import pyRegression.nonlinear_regression as nl_reg
 #############################################
 
 
