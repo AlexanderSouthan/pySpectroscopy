@@ -224,9 +224,6 @@ class spectroscopy_data:
 # spectrum analysis methods
 ####################################
 
-    # PCA reconstruction is implemented in PCA_viewer and
-    # should be transferred to here
-
     def principal_component_analysis(self, pca_components,
                                      active_spectra=None):
         active_spectra = self.check_active_spectra(active_spectra)
