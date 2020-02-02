@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Provides a class for spectroscopic data preprocessing and analysis.
-
-@author: Snijderfrey
 """
 import numpy as np
 import pandas as pd
@@ -123,13 +121,13 @@ class spectroscopy_data:
             ).round(decimals=6)
         return hyperspectral_image_integrated
 
-
     def smoothing(self, mode, active_spectra=None, **kwargs):
         active_spectra = self.check_active_spectra(active_spectra)
 
         smoothed_data = pd.DataFrame(smooth_data.smoothing(
-                active_spectra.values, mode=mode, **kwargs), index=active_spectra.index,
-                columns=active_spectra.columns).round(decimals=6)
+            active_spectra.values, mode=mode, **kwargs),
+            index=active_spectra.index,
+            columns=active_spectra.columns).round(decimals=6)
 
         return smoothed_data
 
@@ -291,7 +289,8 @@ class spectroscopy_data:
 ####################################
 # export methods
 ####################################
-    def export_spectra(self,export_path,export_name,active_spectra = None):
+    def export_spectra(self, export_path, export_name, active_spectra=None):
         active_spectra = self.check_active_spectra(active_spectra)
-        
-        active_spectra.to_csv(export_path + export_name + '.txt',sep='\t',header=True)
+
+        active_spectra.to_csv(export_path + export_name + '.txt', sep='\t',
+                              header=True)
