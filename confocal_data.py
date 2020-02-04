@@ -72,7 +72,7 @@ class confocal_data:
             #                                + self.mean_spectrum(active_image = active_image).values,
             #                                index = active_image.index,columns = active_image.columns)
         elif mode == 'ref_spec_fit':
-            self.monochrome_image = self.reference_spectra_fit(ref_spec,fit_mode,max_iter,initial_guess,lower_bounds,upper_bounds,active_spectra = active_image)
+            self.monochrome_image = self.reference_spectra_fit(ref_spec, active_spectra = active_image)
             self.fitted_spectra = pd.DataFrame(np.dot(self.monochrome_image.values,ref_spec.values),index = self.monochrome_image.index,columns = ref_spec.columns)
         else:
             self.monochrome_image = pd.DataFrame(np.zeros((len(active_image.index),1)),index=active_image.index,columns=['empty image'])

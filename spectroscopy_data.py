@@ -12,7 +12,7 @@ from sklearn.decomposition import PCA
 # import own packagaes ######################
 import pyPreprocessing.baseline_correction as baseline_correction
 import pyPreprocessing.smoothing as smooth_data
-import pyRegression.nonlinear_regression as nl_reg
+import pyRegression.linear_regression as l_reg
 #############################################
 
 
@@ -131,6 +131,7 @@ class spectroscopy_data:
 
         return smoothed_data
 
+    # needs to be adapted to fit all baseline correction modes
     def baseline_correction(self, lam=100, lam_1=100, p=0.01, eta=0.5,
                             n_iter=100, conv_crit=0.001, active_spectra=None,
                             alg='SNIP'):
@@ -241,16 +242,10 @@ class spectroscopy_data:
                                          columns=active_spectra.columns),
                 'explained_variance': pca.explained_variance_ratio_}
 
-    def reference_spectra_fit(self, reference_data, mode, maxiter,
-                              initial_guess, lower_bounds, upper_bounds,
-                              active_spectra=None):  # experimental
+    def reference_spectra_fit(self, reference_data, active_spectra=None):
         active_spectra = self.check_active_spectra(active_spectra)
 
-        reference_components = len(reference_data.index)
-        if lower_bounds is None:
-            lower_bounds = np.zeros(reference_components)
-        if upper_bounds is None:
-            upper_bounds = np.full(reference_components, 1000)
+        reference_components = reference_data.shape[0]
         list_reference_components = ['comp' + str(ii) for ii in np.arange(
             reference_components)]
 
@@ -260,18 +255,9 @@ class spectroscopy_data:
         # self.fit_results = np.empty(len(active_spectra.index),dtype=object)
 
         for ii in tqdm(np.arange(len(active_spectra.index))):
-            if mode == 'Evolutionary':
-                boundaries = list(zip(lower_bounds, upper_bounds))
-                current_fit_result = nl_reg.dataset_regression(
-                    active_spectra.iloc[ii, :], reference_data,
-                    boundaries=boundaries, max_iter=maxiter, alg='evo')
-            elif mode == 'Levenberg-Marquardt':
-                if initial_guess is None:
-                    initial_guess = np.ones(reference_components)
-                current_fit_result = nl_reg.dataset_regression(
-                    active_spectra.iloc[ii, :], reference_data,
-                    initial_guess=initial_guess, alg='lm')
-            fit_coeffs.iloc[ii, :] = current_fit_result.x
+            current_fit_result = l_reg.dataset_regression(
+                active_spectra.iloc[ii, :], reference_data)
+            fit_coeffs.iloc[ii, :] = current_fit_result
             # self.fit_results[ii] = current_fit_result
         return fit_coeffs
 
