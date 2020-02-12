@@ -8,6 +8,8 @@ Created on Sun Jan 12 23:24:34 2020
 import numpy as np
 import pandas as pd
 from scipy.integrate import cumtrapz,trapz
+import plotly.graph_objects as go
+from plotly.offline import plot
 
 class confocal_data:
     def __init__(self,confocal_image,decimals_coordinates = 1):
@@ -104,7 +106,29 @@ class confocal_data:
         self.yScanProjections.columns = ['yScanMin','yScanMax','yScanAverage']
         self.xScanProjections = pd.concat([self.monochrome_image.loc[:,col_index].groupby(level=0).min(),self.monochrome_image.loc[:,col_index].groupby(level=0).max(),self.monochrome_image.loc[:,col_index].groupby(level=0).mean()],axis=1)
         self.xScanProjections.columns = ['xScanMin','xScanMax','xScanAverage']
-    
+
+##############
+# plot options
+##############
+
+    def generate_3D_plot(self, col_index, min_value, max_value, opacity = 1.0,
+                         surface_count=100):
+        active_image = self.__decode_image_index(
+                active_image=self.monochrome_image)
+        
+        coords = active_image.index.to_frame()
+        
+        fig = go.Figure()
+        fig.add_trace(go.Volume(x=coords['x_values'],
+                                y=coords['y_values'],
+                                z=coords['z_values'],
+                                value=active_image.loc[:,col_index],
+                                isomin=min_value,
+                                isomax=max_value,
+                                opacity=opacity,
+                                surface_count=surface_count))
+        plot(fig)
+
     ###########################
 #####      export methods     #################################################
     ###########################
