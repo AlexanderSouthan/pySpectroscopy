@@ -173,40 +173,46 @@ class confocal_data:
                     curr_dataset = self.yz_slice(curr_coord,curr_column)
                 
                 curr_dataset.to_csv(export_path + curr_column + '_' + axis + '_slice_' + str(curr_coord) + '.txt',sep='\t')
-        
-    def __decode_image_index(self,active_image):
+    
+    def export_monochrome_image(self, export_path, export_name):
+        active_image = self.__decode_image_index(self.monochrome_image)
+        active_image.to_csv(export_path + export_name + '.txt', sep='\t',
+                            header=True)
+
+    def __decode_image_index(self, active_image):
         active_image_copy = active_image.copy()
         active_image_index_frame = active_image_copy.index.to_frame()
-        active_image_index_frame.columns = ['x_values','y_values','z_values']
-        active_image_new_index = pd.MultiIndex.from_frame(active_image_index_frame/self.coord_conversion_factor)
-        
+        active_image_index_frame.columns = ['x_values', 'y_values', 'z_values']
+        active_image_new_index = pd.MultiIndex.from_frame(
+            active_image_index_frame/self.coord_conversion_factor)
+
         active_image_copy.index = active_image_new_index
         return active_image_copy
-    
+
     ###########################
 #####     extract methods     #################################################
     ###########################
-    
-    def xScan(self,yPos,zPos,col_index):
-        x_scans = self.monochrome_image.xs((yPos,zPos),level=[1,2])
-        return x_scans.loc[:,col_index]
-    
-    def yScan(self,xPos,zPos,col_index):
-        y_scans = self.monochrome_image.xs((xPos,zPos),level=[0,2])
-        return y_scans.loc[:,col_index]
-    
-    def zScan(self,xPos,yPos,col_index):
-        z_scans = self.monochrome_image.xs((xPos,yPos),level=[0,1])
-        return z_scans.loc[:,col_index]
-    
-    def xz_slice(self,yPos,col_index):
-        xz_slices = self.monochrome_image.xs(yPos,level=1)
-        return xz_slices.loc[:,[col_index]].unstack()
-        
-    def yz_slice(self,xPos,col_index):
-        yz_slices = self.monochrome_image.xs(xPos,level=0)
-        return yz_slices.loc[:,[col_index]].unstack()
-    
-    def xy_slice(self,zPos,col_index):
-        xy_slices = self.monochrome_image.xs(zPos,level=2)
-        return xy_slices.loc[:,[col_index]].unstack()
+
+    def xScan(self, yPos, zPos, col_index):
+        x_scans = self.monochrome_image.xs((yPos, zPos), level=[1, 2])
+        return x_scans.loc[:, col_index]
+
+    def yScan(self, xPos, zPos, col_index):
+        y_scans = self.monochrome_image.xs((xPos, zPos), level=[0, 2])
+        return y_scans.loc[:, col_index]
+
+    def zScan(self, xPos, yPos, col_index):
+        z_scans = self.monochrome_image.xs((xPos, yPos), level=[0, 1])
+        return z_scans.loc[:, col_index]
+
+    def xz_slice(self, yPos, col_index):
+        xz_slices = self.monochrome_image.xs(yPos, level=1)
+        return xz_slices.loc[:, [col_index]].unstack()
+
+    def yz_slice(self, xPos, col_index):
+        yz_slices = self.monochrome_image.xs(xPos, level=0)
+        return yz_slices.loc[:, [col_index]].unstack()
+
+    def xy_slice(self, zPos, col_index):
+        xy_slices = self.monochrome_image.xs(zPos, level=2)
+        return xy_slices.loc[:, [col_index]].unstack()
