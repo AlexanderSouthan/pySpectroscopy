@@ -8,11 +8,12 @@ names can be passed as parameter_names.
 """
 
 class measurement_parameters:
-    def __init__(self,parameters,parameter_names = None):
+    def __init__(self, parameters, parameter_names=None):
         if parameter_names is None:
             self.parameter_names = parameters.index
         else:
             self.parameter_names = parameter_names
             
-        for curr_name,curr_value in zip(parameter_names,parameters.iloc[:,0]):
-            setattr(self,curr_name,curr_value)
+        for curr_name, curr_value in zip(
+                self.parameter_names, parameters.iloc[:,0]):
+            setattr(self, curr_name, curr_value)
