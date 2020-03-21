@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+Contains class hplc_prediction.
+
+Can only be used in combination with hplc_data and hplc_calibration.
+"""
 
 import numpy as np
 import pandas as pd
@@ -11,10 +16,12 @@ from pyAnalytics.hplc_calibration import hplc_calibration
 
 class hplc_prediction():
     """
-    Contains prediction methods for 3D HPLC data containing time resolved
-    absorption spectra, e.g. measured with a DAD detector. The underlying
-    calibration can be univariate or multivariate.
+    Contains prediction methods for 3D HPLC data.
+
+    3D HPLC data are time resolved absorption spectra, e.g. measured with a DAD
+    detector. The underlying calibration can be univariate or multivariate.
     """
+
     def __init__(self, samples, calibrations):
         """
         Only collects the data needed for the different prediction methods.
@@ -65,17 +72,17 @@ class hplc_prediction():
         cals_squeezed = [
             item for sublist in self.calibrations for item in sublist]
         predictions = np.zeros((len(self.samples), len(cals_squeezed)))
-        for ii, sample in enumerate(self.samples):
-            for jj, calibration in enumerate(cals_squeezed):
+        for sample_index, sample in enumerate(self.samples):
+            for cal_index, calibration in enumerate(cals_squeezed):
                 prediction = np.dot(
-                        np.linalg.inv(np.dot(calibration.K.T, calibration.K)),
-                        np.dot(
-                            calibration.K.T,
-                            sample.integrate_all_data(
-                                time_limits=calibration.time_limits,
-                                wavelength_limits=calibration.wavelength_limits
-                                ).values[np.newaxis].T))
-                predictions[ii, jj] = prediction.item()
+                    np.linalg.inv(np.dot(calibration.K.T, calibration.K)),
+                    np.dot(
+                        calibration.K.T,
+                        sample.integrate_all_data(
+                            time_limits=calibration.time_limits,
+                            wavelength_limits=calibration.wavelength_limits
+                            ).values[np.newaxis].T))
+                predictions[sample_index, cal_index] = prediction.item()
 
         return predictions
 
@@ -112,7 +119,7 @@ class hplc_prediction():
         cal_set_sizes = [len(cal_set) for cal_set in self.calibrations]
         number_of_cals = sum(cal_set_sizes)
         predictions = np.zeros((len(self.samples), number_of_cals))
-        
+
         index_counter = 0
         for curr_set_index, curr_cals in enumerate(self.calibrations):
             # calibrations in one set must have equal time and wavelength range
@@ -126,18 +133,20 @@ class hplc_prediction():
             time_limits = curr_cals[0].time_limits
             wavelength_limits = curr_cals[0].wavelength_limits
 
-            for ii, sample in enumerate(self.samples):
+            for sample_index, sample in enumerate(self.samples):
                 sample_cropped = sample.crop_data(
-                    time_limits=time_limits, wavelength_limits=wavelength_limits)
+                    time_limits=time_limits,
+                    wavelength_limits=wavelength_limits)
 
                 curr_pred = np.dot(
                     np.linalg.inv(np.dot(Ks.T, Ks)),
                     np.dot(Ks.T, sample_cropped.T)
                     )
-                curr_pred = np.trapz(np.squeeze(curr_pred), x=sample_cropped.index)
+                curr_pred = np.trapz(
+                    np.squeeze(curr_pred), x=sample_cropped.index)
 
                 predictions[
-                    ii, index_counter:index_counter+cal_set_sizes[
+                    sample_index, index_counter:index_counter+cal_set_sizes[
                         curr_set_index]] = curr_pred
             index_counter = index_counter+cal_set_sizes[curr_set_index]
 
@@ -152,18 +161,65 @@ if __name__ == "__main__":
                            wavelengths=np.linspace(200, 400, 201),
                            times=np.linspace(0, 10, 1001),
                            noise_level=0.05):
+        """
+        Simulate one measurement of HPLC 3D data.
+
+        Absorption spectra are calculated as superpositions of Gaussian
+        absorption bands and elugram peaks as individual Gaussian peaks (with
+        currently fixed width, might be changed in the future). The number n of
+        peaks and thus the number of components is not limited.
+
+        Parameters
+        ----------
+        concentrations : list of floats
+            List giving the concentrations of the n components present in the
+            mixture. Length is n.
+        retention_times : list of floats
+            List giving the peak center retention times of the n components
+            present in the mixture. Length is n..
+        spectrum_wavelengths : list of lists
+            Contains the absorption band center wavelengths for each spectrum
+            of the n components as lists, so contains n lists. Each of the n
+            lists may contain as many floats as necessary to describe the
+            spectrum.
+        spectrum_amplitudes : list of lists
+            Contains the absorption band amplitudes for each spectrum
+            of the n components as lists, so contains n lists in the same order
+            and shape as in spectrum_wavelengths. Each of the n lists therefore
+            contains as many items as in spectrum_wavelengths.
+        spectrum_widths : list of lists
+            Contains the absorption band widths as Gausiian sigma for each
+            spectrum of the n components as lists, so contains n lists in the
+            same order and shape as in spectrum_wavelengths. Each of the n
+            lists therefore contains as many items as in spectrum_wavelengths.
+        wavelengths : ndarray, optional
+            Wavelengths used for calculating the absorption spectra. The
+            default is np.linspace(200, 400, 201).
+        times : ndarray, optional
+            Time values used for calculation of the elugrams. The default is
+            np.linspace(0, 10, 1001).
+        noise_level : float, optional
+            Data is superimposed with Gaussian noise if noise_level != 0. The
+            default is 0.05. The bigger the value, the more noise is present.
+
+        Returns
+        -------
+        data_3D : instance of hplc_data
+            Contains the calculated data as an instance of hplc_data.
+
+        """
         number_of_components = len(concentrations)
         # first step: pure component absorption spectra are calculated and
         # stored in uv_spectra
         uv_spectra = np.zeros((number_of_components, len(wavelengths)))
-        for ii, (curr_amp, curr_wl, curr_width) in enumerate(
+        for index, (curr_amp, curr_wl, curr_width) in enumerate(
                 zip(spectrum_amplitudes, spectrum_wavelengths,
                     spectrum_widths)):
             curr_y_offset = len(curr_amp)*[0]
             curr_params = np.ravel(np.array(
                 [curr_amp, curr_wl, curr_y_offset, curr_width]).T)
 
-            uv_spectra[ii] = calc_function(
+            uv_spectra[index] = calc_function(
                 wavelengths, curr_params, 'Gauss')
 
         # second step: basic chromatogram shapes separately for each component
@@ -179,107 +235,100 @@ if __name__ == "__main__":
         weighted_spectra = np.array(concentrations)[:, np.newaxis]*uv_spectra
         data_3D = np.dot(chromatograms.T, weighted_spectra)
         noise = np.random.standard_normal(data_3D.shape)*noise_level
-        data_3D = pd.DataFrame(
-            data_3D + noise, index=times, columns=wavelengths)
-
+        data_3D = hplc_data('DataFrame',
+                            data=pd.DataFrame(data_3D + noise,
+                                              index=times,
+                                              columns=wavelengths))
         return data_3D
 
     # calculate simulated HPLC/DAD output for calibration
-    concentrations = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
-    calibration_1_dfs = []
-    calibration_2_dfs = []
-    calibration_3_dfs = []
-    calibration_4_dfs = []
-    for curr_c in concentrations:
-        calibration_1_dfs.append(
+    calib_c = [0.1, 0.2, 0.3, 0.4, 0.5]
+    calibration_1_data = []
+    calibration_2_data = []
+    calibration_3_data = []
+    calibration_4_data = []
+    for curr_c in calib_c:
+        calibration_1_data.append(
             simulate_hplc_data([curr_c], [4.3], [[200, 250]], [[4, 0.8]],
                                [[15, 15]])
             )
-        calibration_2_dfs.append(
+        calibration_2_data.append(
             simulate_hplc_data([curr_c], [5], [[200, 275]], [[4, 1.3]],
                                [[15, 12]])
             )
-        calibration_3_dfs.append(
+        calibration_3_data.append(
             simulate_hplc_data([curr_c], [7.3], [[200, 275]], [[4, 1.3]],
                                [[15, 12]])
             )
-        calibration_4_dfs.append(
+        calibration_4_data.append(
             simulate_hplc_data([curr_c], [7.3], [[200, 300]], [[4, 1.8]],
                                [[15, 12]])
             )
 
     # generate hplc_calibration instance with simulated calibration data
-    calibration_1 = hplc_calibration('DataFrame',
-                                     calibration_data=calibration_1_dfs,
-                                     concentrations=concentrations,
-                                     time_limits=[3, 6],
+    calibration_1 = hplc_calibration('hplc_data', calibration_1_data,
+                                     calib_c, time_limits=[3, 6],
                                      wavelength_limits=[225, 300])
 
-    calibration_1_uni = hplc_calibration('DataFrame',
-                                         calibration_data=calibration_1_dfs,
-                                         concentrations=concentrations,
-                                         time_limits=[3, 6],
+    calibration_1_uni = hplc_calibration('hplc_data', calibration_1_data,
+                                         calib_c, time_limits=[3, 6],
                                          wavelength_limits=[250, 250])
 
-    calibration_2 = hplc_calibration('DataFrame',
-                                     calibration_data=calibration_2_dfs,
-                                     concentrations=concentrations,
-                                     time_limits=[3, 6],
+    calibration_2 = hplc_calibration('hplc_data', calibration_2_data,
+                                     calib_c, time_limits=[3, 6],
                                      wavelength_limits=[225, 300])
 
-    calibration_3 = hplc_calibration('DataFrame',
-                                     calibration_data=calibration_3_dfs,
-                                     concentrations=concentrations,
-                                     time_limits=[6.1, 9],
+    calibration_3 = hplc_calibration('hplc_data', calibration_3_data,
+                                     calib_c, time_limits=[6.1, 9],
                                      wavelength_limits=[225, 300])
 
-    calibration_4 = hplc_calibration('DataFrame',
-                                     calibration_data=calibration_4_dfs,
-                                     concentrations=concentrations,
-                                     time_limits=[6.1, 9],
+    calibration_4 = hplc_calibration('hplc_data', calibration_4_data,
+                                     calib_c, time_limits=[6.1, 9],
                                      wavelength_limits=[250, 350])
 
     # calculate samples with unknown concentration
     unknown_sample_1 = simulate_hplc_data(
         [0.35, 0.2], [4.3, 5], [[200, 250], [200, 275]],
         [[4, 0.8], [4, 1.3]], [[15, 15], [15, 12]])
-    unknown_sample_1 = hplc_data('DataFrame', data=unknown_sample_1)
 
     unknown_sample_2 = simulate_hplc_data(
         [0.27, 0.55], [4.3, 5], [[200, 250], [200, 275]],
         [[4, 0.8], [4, 1.3]], [[15, 15], [15, 12]])
-    unknown_sample_2 = hplc_data('DataFrame', data=unknown_sample_2)
-    
+
     unknown_sample_3 = simulate_hplc_data(
         [3, 2], [4.3, 7.3], [[200, 250], [200, 275]],
         [[4, 0.8], [4, 1.3]], [[15, 15], [15, 12]])
-    unknown_sample_3 = hplc_data('DataFrame', data=unknown_sample_3)
-    
+
     unknown_sample_4 = simulate_hplc_data(
-        [0.9, 1.4, 0.7], [4.3, 5, 7.3], [[200, 250], [200, 275], [200,300]],
+        [0.9, 1.4, 0.7], [4.3, 5, 7.3], [[200, 250], [200, 275], [200, 300]],
         [[4, 0.8], [4, 1.3], [4, 1.8]], [[15, 15], [15, 12], [15, 12]])
-    unknown_sample_4 = hplc_data('DataFrame', data=unknown_sample_4)
 
     unknown_sample_5 = simulate_hplc_data(
         [0.49], [4.3], [[200, 250]],
         [[4, 0.8]], [[15, 15]])
-    unknown_sample_5 = hplc_data('DataFrame', data=unknown_sample_5)
 
     # predict unknown concentrations with multivariate calibrations
     predicted_concentrations = hplc_prediction(
         [unknown_sample_1, unknown_sample_2], [[calibration_1, calibration_2]])
-    unknown_concentrations_simple = predicted_concentrations.simple_prediction()
-    unknown_concentrations_advanced = predicted_concentrations.advanced_prediction()
+    unknown_concentrations_simple = (
+        predicted_concentrations.simple_prediction())
+    unknown_concentrations_advanced = (
+        predicted_concentrations.advanced_prediction())
 
     predicted_concentrations_2 = hplc_prediction(
         [unknown_sample_3], [[calibration_1], [calibration_3]])
-    unknown_concentrations_simple_2 = predicted_concentrations_2.simple_prediction()
-    unknown_concentrations_advanced_2 = predicted_concentrations_2.advanced_prediction()
-    
+    unknown_concentrations_simple_2 = (
+        predicted_concentrations_2.simple_prediction())
+    unknown_concentrations_advanced_2 = (
+        predicted_concentrations_2.advanced_prediction())
+
     predicted_concentrations_3 = hplc_prediction(
-        [unknown_sample_4, unknown_sample_5], [[calibration_1, calibration_2], [calibration_4]])
-    unknown_concentrations_simple_3 = predicted_concentrations_3.simple_prediction()
-    unknown_concentrations_advanced_3 = predicted_concentrations_3.advanced_prediction()
+        [unknown_sample_4, unknown_sample_5], [[calibration_1, calibration_2],
+                                               [calibration_4]])
+    unknown_concentrations_simple_3 = (
+        predicted_concentrations_3.simple_prediction())
+    unknown_concentrations_advanced_3 = (
+        predicted_concentrations_3.advanced_prediction())
 
     print('Correct_concentrations:\n0.35, 0.2\n0.27, 0.55')
     print('Predicted concentrations (multivariate, simple):\n',
@@ -288,17 +337,23 @@ if __name__ == "__main__":
           unknown_concentrations_advanced)
 
     print('Simple sample, simple (3, 2):\n', unknown_concentrations_simple_2)
-    print('Simple sample, advanced (3, 2):\n', unknown_concentrations_advanced_2)
-    print('Complex sample, simple (0.9, 1.4, 0.7):\n', unknown_concentrations_simple_3)
-    print('Complex sample, advanced (0.9, 1.4, 0.7):\n', unknown_concentrations_advanced_3)
+    print('Simple sample, advanced (3, 2):\n',
+          unknown_concentrations_advanced_2)
+    print('Complex sample, simple (0.9, 1.4, 0.7):\n',
+          unknown_concentrations_simple_3)
+    print('Complex sample, advanced (0.9, 1.4, 0.7):\n',
+          unknown_concentrations_advanced_3)
 
     # plot some data
     plt.figure(0)
-    plt.plot(calibration_1.calibration_data[4].raw_data.columns, calibration_1.calibration_data[4].raw_data.loc[4.3, :],
-             calibration_2.calibration_data[4].raw_data.columns, calibration_2.calibration_data[4].raw_data.loc[5, :])
+    plt.plot(calibration_1.calibration_data[4].raw_data.columns,
+             calibration_1.calibration_data[4].raw_data.loc[4.3, :],
+             calibration_2.calibration_data[4].raw_data.columns,
+             calibration_2.calibration_data[4].raw_data.loc[5, :])
 
     plt.figure(1)
-    plt.plot(unknown_sample_1.raw_data.index, unknown_sample_1.raw_data.loc[:,200])
+    plt.plot(unknown_sample_1.raw_data.index,
+             unknown_sample_1.raw_data.loc[:, 200])
 
     plt.figure()
     plt.plot(calibration_1.K)
