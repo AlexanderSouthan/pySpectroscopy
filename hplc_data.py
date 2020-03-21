@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Dec  4 14:26:41 2019
-
-@author: aso
-"""
 
 import numpy as np
 import pandas as pd
@@ -153,5 +148,3 @@ class hplc_data:
         if active_data is None:
             active_data = self.raw_data
         return active_data
-            
-        
