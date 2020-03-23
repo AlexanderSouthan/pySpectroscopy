@@ -19,7 +19,9 @@ class hplc_prediction():
     Contains prediction methods for 3D HPLC data.
 
     3D HPLC data are time resolved absorption spectra, e.g. measured with a DAD
-    detector. The underlying calibration can be univariate or multivariate.
+    detector. The underlying calibration can be univariate or multivariate
+    based on classical least squares (multi)linear regression or principal
+    component regression.
     """
 
     def __init__(self, samples, calibrations):
@@ -48,45 +50,67 @@ class hplc_prediction():
         self.samples = samples
         self.calibrations = calibrations
 
-    def simple_prediction(self):
+    def simple_prediction(self, mode='cls'):
         """
         Predicts concentrations of n samples by the classical method.
 
         Based on first integrating elugrams at all wavelengths and subsequent
-        classical least squares fitting of the resulting spectrum with the m
-        calibration data K present in self.calibrations. Thus, the separation
-        of the spectral information is lost in the elugram regions present in
-        the calibrations. Data are analyzed based on time limits and wavelength
-        limits given in the calibrations. This procedure works well for
-        baseline separated peaks and it is possible to use wavelength ranges
-        (multivariate) or a single wavelength (univariate, as routinely done in
-        HPLC analysis).
+        either classical least squares fitting or principal component
+        regression of the resulting spectrum with the m calibration data
+        present in self.calibrations. Thus, the separation of the spectral
+        information is lost in the elugram regions present in the calibrations.
+        Data are analyzed based on time limits and wavelength limits given in
+        the calibrations. This procedure works well for baseline separated
+        peaks and it is possible to use wavelength ranges (multivariate) or a
+        single wavelength in case of classical least squares fitting
+        (univariate, as routinely done in HPLC analysis).
+
+        Parameters
+        ----------
+        mode : str, optional
+            Calibration mode used for prediction. Allowed values are 'cls' for
+            classical least squares and 'pcr' for principal component
+            regression. The default is 'cls'.
+
+        Raises
+        ------
+        ValueError
+            DESCRIPTION.
 
         Returns
         -------
         predictions : ndarray
             Contains the predicted concentrations of the n samples for m
-            components determined by the m calibrations. Shape is (n, m).
+            components determined by the m calibrations by the method
+            determined by mode. Shape is (n, m).
 
         """
         cals_squeezed = [
             item for sublist in self.calibrations for item in sublist]
         predictions = np.zeros((len(self.samples), len(cals_squeezed)))
+
         for sample_index, sample in enumerate(self.samples):
             for cal_index, calibration in enumerate(cals_squeezed):
-                prediction = np.dot(
-                    np.linalg.inv(np.dot(calibration.K.T, calibration.K)),
-                    np.dot(
-                        calibration.K.T,
-                        sample.integrate_all_data(
-                            time_limits=calibration.time_limits,
-                            wavelength_limits=calibration.wavelength_limits
-                            ).values[np.newaxis].T))
+                curr_data = sample.integrate_all_data(
+                    time_limits=calibration.time_limits,
+                    wavelength_limits=calibration.wavelength_limits
+                    ).values
+                if mode == 'cls':  # classical least squares
+                    prediction = np.dot(
+                        np.linalg.inv(np.dot(calibration.K.T, calibration.K)),
+                        np.dot(
+                            calibration.K.T,
+                            curr_data[np.newaxis].T))
+                elif mode == 'pcr':  # principal component regression
+                    prediction = calibration.pcr_calibration.predict(
+                        curr_data.T.reshape(1, -1))
+                else:
+                    raise ValueError('No valid prediction mode given.')
                 predictions[sample_index, cal_index] = prediction.item()
 
         return predictions
 
-    def advanced_prediction(self):
+    def advanced_prediction(self, mode='cls'):  # mode not used at the moment
         """
         Predicts concentrations of n samples including chemometric methods.
 
