@@ -298,18 +298,20 @@ class tensile_test():
 
         return sample
 
-#file = r'Z:\Charakterisierungen und Messungen\Python\zz_not_yet_in_git\04_Zugversuch-Auswertung\62\62.xls'
-#file = r'Z:/Lehre/Studentische Arbeiten/02 Abgeschlossene Arbeiten/2019_Marc Stuhlmüller/Messdaten Zugversuche/03_Messdaten Zugversuche bis 15/23.xls'
-# file = r'Z:\Charakterisierungen und Messungen\Python\zz_not_yet_in_git\04_Zugversuch-Auswertung\62\Mappe1.xlsx'
-# file = r'/home/almami/Alexander/Python_Skripte/yy_Not_yet_in_git/04_Zugversuch-Auswertung/62/62.xls'
 
-file = r'Z:\Lehre\Studentische Arbeiten\01 Aktuelle Arbeiten\2020_Rebecca Hirsch\Messdaten_Zugversuche.xls'
+if __name__ == "__main__":
+    #file = r'Z:\Charakterisierungen und Messungen\Python\zz_not_yet_in_git\04_Zugversuch-Auswertung\62\62.xls'
+    #file = r'Z:/Lehre/Studentische Arbeiten/02 Abgeschlossene Arbeiten/2019_Marc Stuhlmüller/Messdaten Zugversuche/03_Messdaten Zugversuche bis 15/23.xls'
+    # file = r'Z:\Charakterisierungen und Messungen\Python\zz_not_yet_in_git\04_Zugversuch-Auswertung\62\Mappe1.xlsx'
+    # file = r'/home/almami/Alexander/Python_Skripte/yy_Not_yet_in_git/04_Zugversuch-Auswertung/62/62.xls'
 
-tensile_test = tensile_test(file, 'Marc_Stuhlmueller', unit_strain='%',
-                            unit_stress='MPa')
-tensile_test.calc_e_modulus(r_squared_lower_limit = 0.998, upper_strain_limit=5,
+    file = r'Z:\Lehre\Studentische Arbeiten\01 Aktuelle Arbeiten\2020_Rebecca Hirsch\Messdaten_Zugversuche.xls'
+
+    tensile_test = tensile_test(file, 'Marc_Stuhlmueller', unit_strain='%',
+                                unit_stress='MPa')
+    tensile_test.calc_e_modulus(r_squared_lower_limit = 0.998, upper_strain_limit=5,
                             sav_gol_window=500, data_points=10000)
-tensile_test.calc_strength()
-tensile_test.calc_toughness()
-tensile_test.calc_elongation_at_break()
-test_results = tensile_test.results
+    tensile_test.calc_strength()
+    tensile_test.calc_toughness()
+    tensile_test.calc_elongation_at_break()
+    test_results = tensile_test.results
