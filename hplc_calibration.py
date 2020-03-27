@@ -10,7 +10,8 @@ import numpy as np
 import pandas as pd
 
 from pyAnalytics.hplc_data import hplc_data
-from pyRegression.multivariate_regression import principal_component_regression
+from pyRegression.multivariate_regression import (
+    principal_component_regression, pls_regression)
 
 
 class hplc_calibration():
@@ -55,9 +56,9 @@ class hplc_calibration():
             element can either be a number or None. In the latter case, no data
             is removed from the respective side. The default is None.
         **kwargs : 
-            n_components : int
+            pcr_components : int
                 Determines the number of principal components used for
-                principal component regression calibration. The default is 1.
+                principal component regression calibration. The default is 2.
 
         Raises
         ------
@@ -89,8 +90,10 @@ class hplc_calibration():
         # Principal component regression can only be performed if more than one
         # wavelength is used for calibration.
         if len(np.squeeze(self.calibration_integrated).shape) > 1:
-            n_components = kwargs.get('n_components', 2)
-            self.principal_component_regression(n_components=n_components)
+            pcr_components = kwargs.get('pcr_components', 2)
+            plsr_components = kwargs.get('plsr_components', 2)
+            self.principal_component_regression(n_components=pcr_components)
+            self.pls_regression(n_components=plsr_components)
 
     def classical_least_squares(self):
         """
@@ -146,7 +149,17 @@ class hplc_calibration():
         """
         self.pcr_calibration = principal_component_regression(
             self.calibration_integrated.values.T, self.concentrations)
-        self.pcr_calibration.PCR_fit(n_components, cv_percentage=cv_percentage)
+        self.pcr_components = n_components
+        self.pcr_calibration.pcr_fit(self.pcr_components,
+                                     cv_percentage=cv_percentage)
+
+    def pls_regression(self, n_components=2, cv_percentage=20, scale=False):
+        self.plsr_calibration = pls_regression(
+            self.calibration_integrated.values.T, self.concentrations)
+        self.plsr_components = n_components
+        self.plsr_calibration.plsr_fit(self.plsr_components,
+                                       cv_percentage=cv_percentage,
+                                       scale=scale)
 
     def integrate_calibration_data(self):
         """

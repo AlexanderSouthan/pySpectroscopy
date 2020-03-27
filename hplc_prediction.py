@@ -8,8 +8,8 @@ Can only be used in combination with hplc_data and hplc_calibration.
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pyRegression.nonlinear_regression import calc_function
 
+from pyRegression.nonlinear_regression import calc_function
 from pyAnalytics.hplc_data import hplc_data
 from pyAnalytics.hplc_calibration import hplc_calibration
 
@@ -55,22 +55,22 @@ class hplc_prediction():
         Predicts concentrations of n samples by the classical method.
 
         Based on first integrating elugrams at all wavelengths and subsequent
-        either classical least squares fitting or principal component
-        regression of the resulting spectrum with the m calibration data
-        present in self.calibrations. Thus, the separation of the spectral
-        information is lost in the elugram regions present in the calibrations.
-        Data are analyzed based on time limits and wavelength limits given in
-        the calibrations. This procedure works well for baseline separated
-        peaks and it is possible to use wavelength ranges (multivariate) or a
-        single wavelength in case of classical least squares fitting
-        (univariate, as routinely done in HPLC analysis).
+        either classical least squares fitting, principal component regression,
+        or partial least squares regression of the resulting spectrum with the
+        m calibration data present in self.calibrations. Thus, the separation
+        of the spectral information is lost in the elugram regions present in
+        the calibrations. Data are analyzed based on time limits and wavelength
+        limits given in the calibrations. This procedure works well for
+        baseline separated peaks and it is possible to use wavelength ranges
+        (multivariate) or a single wavelength in case of classical least
+        squares fitting (univariate, as routinely done in HPLC analysis).
 
         Parameters
         ----------
         mode : str, optional
             Calibration mode used for prediction. Allowed values are 'cls' for
-            classical least squares and 'pcr' for principal component
-            regression. The default is 'cls'.
+            classical least squares, 'pcr' for principal component, and 'plsr'
+            for partial least squares regression. The default is 'cls'.
 
         Raises
         ------
@@ -103,7 +103,12 @@ class hplc_prediction():
                             curr_data[np.newaxis].T))
                 elif mode == 'pcr':  # principal component regression
                     prediction = calibration.pcr_calibration.predict(
-                        curr_data.T.reshape(1, -1))
+                        curr_data.T.reshape(1, -1),
+                        calibration.pcr_components)
+                elif mode == 'plsr':  # partial least squares regression
+                    prediction = calibration.plsr_calibration.predict(
+                        curr_data.T.reshape(1, -1),
+                        calibration.plsr_components)
                 else:
                     raise ValueError('No valid prediction mode given.')
                 predictions[sample_index, cal_index] = prediction.item()
@@ -274,25 +279,26 @@ if __name__ == "__main__":
     for curr_c in calib_c:
         calibration_1_data.append(
             simulate_hplc_data([curr_c], [4.3], [[200, 250]], [[4, 0.8]],
-                               [[15, 15]])
+                               [[15, 15]], noise_level=0.05)
             )
         calibration_2_data.append(
             simulate_hplc_data([curr_c], [5], [[200, 275]], [[4, 1.3]],
-                               [[15, 12]])
+                               [[15, 12]], noise_level=0.05)
             )
         calibration_3_data.append(
             simulate_hplc_data([curr_c], [7.3], [[200, 275]], [[4, 1.3]],
-                               [[15, 12]])
+                               [[15, 12]], noise_level=0.05)
             )
         calibration_4_data.append(
             simulate_hplc_data([curr_c], [7.3], [[200, 300]], [[4, 1.8]],
-                               [[15, 12]])
+                               [[15, 12]], noise_level=0.05)
             )
 
     # generate hplc_calibration instance with simulated calibration data
     calibration_1 = hplc_calibration('hplc_data', calibration_1_data,
                                      calib_c, time_limits=[3, 6],
-                                     wavelength_limits=[225, 300])
+                                     wavelength_limits=[225, 300],
+                                     plsr_components=2, pcr_components=2)
 
     calibration_1_uni = hplc_calibration('hplc_data', calibration_1_data,
                                          calib_c, time_limits=[3, 6],
@@ -304,7 +310,8 @@ if __name__ == "__main__":
 
     calibration_3 = hplc_calibration('hplc_data', calibration_3_data,
                                      calib_c, time_limits=[6.1, 9],
-                                     wavelength_limits=[225, 300])
+                                     wavelength_limits=[225, 300],
+                                     plsr_components=2, pcr_components=2)
 
     calibration_4 = hplc_calibration('hplc_data', calibration_4_data,
                                      calib_c, time_limits=[6.1, 9],
@@ -321,7 +328,7 @@ if __name__ == "__main__":
 
     unknown_sample_3 = simulate_hplc_data(
         [3, 2], [4.3, 7.3], [[200, 250], [200, 275]],
-        [[4, 0.8], [4, 1.3]], [[15, 15], [15, 12]])
+        [[4, 0.8], [4, 1.3]], [[15, 15], [15, 12]], noise_level=0.05)
 
     unknown_sample_4 = simulate_hplc_data(
         [0.9, 1.4, 0.7], [4.3, 5, 7.3], [[200, 250], [200, 275], [200, 300]],
