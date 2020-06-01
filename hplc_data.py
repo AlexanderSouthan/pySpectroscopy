@@ -37,6 +37,10 @@ class hplc_data():
             directory : str
                 Directory containing the file given in file_name. Note that it
                 must be given without a trailing '/'.
+            full_path : str
+                An alternative to the separate file_name and directory, is the
+                full path to the imported file. If a value is given, it is
+                treated with a higher priority than file_name and directory.
         **kwargs for mode == 'DataFrame':
             data : DataFrame
                 Data is a pandas DataFrame with elution times as index and
@@ -53,14 +57,18 @@ class hplc_data():
 
         """
         if mode == 'import':
-            self.file_name = kwargs.get('file_name')
-            directory = kwargs.get('directory', None)
-            if directory is None:
-                self.directory = ''
-            else:
-                self.directory = directory + '/'
+            self.import_path = kwargs.get('full_path', None)
+            
+            if self.import_path is None:
+                self.file_name = kwargs.get('file_name')
+                directory = kwargs.get('directory', None)
+                if directory is None:
+                    self.directory = ''
+                else:
+                    self.directory = directory + '/'
+                self.import_path = self.directory + self.file_name
 
-            self.import_from_file(self.file_name, self.directory)
+            self.import_from_file(self.import_path)
         elif mode == 'DataFrame':
             self.raw_data = kwargs.get('data')
             self.wavelengths = self.raw_data.columns.to_numpy()
@@ -80,7 +88,7 @@ class hplc_data():
 
         self.time_data = self.raw_data.index.to_numpy()
 
-    def import_from_file(self, file_name, directory):
+    def import_from_file(self, import_path):
         """
         Import one measurement's 3D HPLC data from Shimadzu LabSolution.
 
@@ -89,21 +97,18 @@ class hplc_data():
 
         Parameters
         ----------
-        file_name : str
-            See docstring of __init__.
-        directory : str
-            See docstring of __init__.
+        import path : str
+            The full path including the file name for import.
 
         Returns
         -------
         None.
 
         """
-        # next two lines in case function is called after mode was not 'import'
-        self.file_name = file_name
-        self.directory = directory
+        # next line in case function is called after mode was not 'import'
+        self.import_path = import_path
 
-        PDA_data_raw = pd.read_csv(self.directory + self.file_name, sep='\t',
+        PDA_data_raw = pd.read_csv(self.import_path, sep='\t',
                                    skiprows=13, nrows=7)
         self.PDA_data = measurement_parameters(
             PDA_data_raw, parameter_names=[
@@ -119,7 +124,7 @@ class hplc_data():
             self.PDA_data.start_wavelength, self.PDA_data.end_wavelength,
             num=self.PDA_data.number_of_wavelength_points)
 
-        self.raw_data = np.loadtxt(self.directory + self.file_name,
+        self.raw_data = np.loadtxt(self.import_path,
                                    skiprows=23, delimiter='\t')
         self.raw_data = pd.DataFrame(self.raw_data)
         self.raw_data.set_index(0, inplace=True)
