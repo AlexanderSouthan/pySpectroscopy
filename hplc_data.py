@@ -167,20 +167,18 @@ class hplc_data():
             time_limits = [self.PDA_data.start_time, self.PDA_data.end_time]
         elif None in time_limits:
             if time_limits[0] is None:
-                time_limits = [self.PDA_data.start_time, time_limits[1]]
-            elif time_limits[1] is None:
-                time_limits = [time_limits[0], self.PDA_data.end_time]
+                time_limits[0] = self.PDA_data.start_time
+            if time_limits[1] is None:
+                time_limits[1] = self.PDA_data.end_time
 
         if wavelength_limits is None:
             wavelength_limits = [
                 self.PDA_data.start_wavelength, self.PDA_data.end_wavelength]
         elif None in wavelength_limits:
             if wavelength_limits[0] is None:
-                wavelength_limits = [
-                    self.PDA_data.start_wavelength, wavelength_limits[1]]
-            elif wavelength_limits[1] is None:
-                wavelength_limits = [
-                    wavelength_limits[0], self.PDA_data.end_wavelength]
+                wavelength_limits[0] = self.PDA_data.start_wavelength
+            if wavelength_limits[1] is None:
+                wavelength_limits[1] = self.PDA_data.end_wavelength
 
         cropped_data = active_data.iloc[
             self.closest_index_to_value(

@@ -92,8 +92,11 @@ class hplc_calibration():
         if len(np.squeeze(self.calibration_integrated).shape) > 1:
             pcr_components = kwargs.get('pcr_components', 2)
             plsr_components = kwargs.get('plsr_components', 2)
-            self.principal_component_regression(n_components=pcr_components)
-            self.pls_regression(n_components=plsr_components)
+            self.principal_component_regression(
+                n_components=pcr_components,
+                cv_percentage=1/len(self.calibration_data)*100)
+            self.pls_regression(n_components=plsr_components,
+                                cv_percentage=1/len(self.calibration_data)*100)
 
     def classical_least_squares(self):
         """

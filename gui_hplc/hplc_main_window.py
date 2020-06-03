@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
 import pyAnalytics.raman_data as raman
 #from gui_objects.plot_canvas import plot_canvas
 from pyAnalytics.hplc_data import hplc_data
-from hplc_calibration_window import hplc_calibration
+from hplc_calibration_window import hplc_calibration_window
 #from spectra_fit_viewer import spectra_fit_viewer
 #from pca_viewer import pca_viewer
 #from options_viewer import options_viewer
@@ -103,8 +103,10 @@ class main_window(QMainWindow):
                 hplc_data('import', full_path=curr_file))
             plt.plot(self.imported_data[-1].extract_elugram(220))
 
+        self.preprocessed_data = self.imported_data.copy()
+
     def open_calibration_window(self):
-        self.hplc_calibration_window = hplc_calibration(self)
+        self.hplc_calibration_window = hplc_calibration_window(self)
         self.hplc_calibration_window.show()
 
     def center(self):  # centers object on screen
