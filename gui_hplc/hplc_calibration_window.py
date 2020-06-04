@@ -18,6 +18,8 @@ class hplc_calibration_window(QMainWindow):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
+        self.set_active_dataset()
+
         self.init_window()
         self.define_widgets()
         self.position_widgets()
@@ -129,13 +131,14 @@ class hplc_calibration_window(QMainWindow):
             'concentrations': calibration_concentrations}
 
     def update_calibration(self):
-        assert len(self.calibration_parameters['concentrations']) == len(self.parent.preprocessed_data), 'Number of concentrations is not equal to number of calibration samples.'
+        assert len(self.calibration_parameters['concentrations']) == len(self.parent.hplc_datasets[self.active_dataset]), 'Number of concentrations is not equal to number of calibration samples.'
         self.calibration = hplc_calibration(
-            'hplc_data', self.parent.preprocessed_data,
+            'hplc_data', self.parent.hplc_datasets[self.active_dataset],
             self.calibration_parameters['concentrations'],
             time_limits=self.calibration_parameters['time_limits'],
             wavelength_limits=self.calibration_parameters['wl_limits'])
         
+        self.calibration_plot.axes.clear()
         self.calibration_plot.plot(
             self.calibration_parameters['concentrations'],
             self.calibration.calibration_integrated.T, mode='scatter')
@@ -145,3 +148,6 @@ class hplc_calibration_window(QMainWindow):
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
+
+    def set_active_dataset(self):
+        self.active_dataset = self.parent.dataset_selection_combo.currentText()
