@@ -5,34 +5,22 @@ Created on Sun May 12 20:40:26 2019
 @author: AlMaMi
 """
 
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import sys
-import copy
+import pickle
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
                              QLineEdit, QFileDialog, QGridLayout, QHBoxLayout,
-                             QVBoxLayout, QTextEdit, QLabel, QToolTip, QAction,
-                             qApp, QPushButton, QDesktopWidget, QCheckBox)
+                             QVBoxLayout, QLabel, QAction, QDesktopWidget, 
+                             QActionGroup, QMenu)
 
-# import own modules ################
-import pyAnalytics.raman_data as raman
-#from gui_objects.plot_canvas import plot_canvas
-from pyAnalytics.hplc_data import hplc_data
 from hplc_import_window import hplc_import_window
 from hplc_calibration_window import hplc_calibration_window
 from hplc_visualization_window import hplc_visualization_window
-#from spectra_fit_viewer import spectra_fit_viewer
-#from pca_viewer import pca_viewer
-#from options_viewer import options_viewer
-#####################################
 
 
 class main_window(QMainWindow):
 
     def __init__(self):
-        super().__init__()  # constructor of for parent object class is called
+        super().__init__()
         self.init_window()
         self.define_widgets()
         self.position_widgets()
@@ -40,11 +28,75 @@ class main_window(QMainWindow):
 
         self.hplc_datasets = {}
         self.hplc_file_names = {}
+        self.hplc_calibrations = {}
 
     def init_window(self):
         self.setGeometry(500, 500, 1200, 100)  # xPos,yPos,width, heigth
         self.center()  # center function is defined below
         self.setWindowTitle('HPLC data analysis')
+
+        self.statusBar().showMessage('Welcome')
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu('&File')
+        visualize_menu = menubar.addMenu('&Visualize')
+        preprocess_menu = menubar.addMenu('&Preprocessing')
+        calibration_menu = menubar.addMenu('&Calibration')
+        analysis_menu = menubar.addMenu('&Analyze data')
+
+        import_filter_menu = QMenu('Dataset import filter', self)
+        import_filter_group = QActionGroup(import_filter_menu)
+        # Any entry in the following list generates a new entry in import
+        # filter submenu
+        import_filters = ['3D ASCII data']
+        for import_filter in import_filters:
+            import_action = QAction(import_filter, import_filter_menu,
+                                    checkable=True,
+                                    checked=import_filter==import_filters[0])
+            import_filter_menu.addAction(import_action)
+            import_filter_group.addAction(import_action)
+        import_filter_group.setExclusive(True)
+        file_menu.addMenu(import_filter_menu)
+
+        import_dataset_action = QAction('Import dataset', self)
+        import_dataset_action.setShortcut('Ctrl+I')
+        import_dataset_action.setStatusTip('Import dataset')
+        import_dataset_action.triggered.connect(self.open_import_window)
+
+        open_dataset_action = QAction('Open dataset from file', self)
+        open_dataset_action.setShortcut('Ctrl+O')
+        open_dataset_action.setStatusTip('Open dataset from file')
+        open_dataset_action.triggered.connect(self.open_dataset)
+
+        save_dataset_action = QAction('Save dataset to file', self)
+        save_dataset_action.setShortcut('Ctrl+S')
+        save_dataset_action.setStatusTip('Save dataset to file')
+        save_dataset_action.triggered.connect(self.save_dataset)
+
+        open_calibration_action = QAction('Open calibration from file', self)
+        open_calibration_action.setStatusTip('Open calibration from file')
+        open_calibration_action.triggered.connect(self.open_calibration)
+
+        save_calibration_action = QAction('Save calibration to file', self)
+        save_calibration_action.setStatusTip('Save calibration to file')
+        save_calibration_action.triggered.connect(self.save_calibration)
+
+        file_menu.addMenu(import_filter_menu)
+        file_menu.addAction(import_dataset_action)
+        file_menu.addAction(open_dataset_action)
+        file_menu.addAction(save_dataset_action)
+        file_menu.addAction(open_calibration_action)
+        file_menu.addAction(save_calibration_action)
+
+        elugram_viewer_action = QAction('2D Elugram viewer', self)
+        elugram_viewer_action.triggered.connect(self.open_visualization_window)
+
+        visualize_menu.addAction(elugram_viewer_action)
+
+        calibration_viewer_action = QAction('Calibration wizard', self)
+        calibration_viewer_action.triggered.connect(
+            self.open_calibration_window)
+
+        calibration_menu.addAction(calibration_viewer_action)
 
         self.container0 = QWidget(self)
         self.setCentralWidget(self.container0)
@@ -53,17 +105,13 @@ class main_window(QMainWindow):
         self.container0.setLayout(self.grid_container)
 
     def define_widgets(self):
-        self.import_wizard_button = QPushButton('Import wizard')
-        self.visualize_data_button = QPushButton('Visualize data')
         # Interesting preprocessing options: Baseline correction, normalize
         # with internal standard. Should both be integrated into hplc_data.
-        self.open_preprocessing_button = QPushButton('Data preprocessing')
-        self.open_calibration_button = QPushButton('Calibration wizard')
-        self.export_wizard_button = QPushButton('Export wizard')
-        self.analyze_data_button = QPushButton('Analyze data')
-
         self.dataset_selection_label = QLabel('<b>Active dataset</b>')
         self.dataset_selection_combo = QComboBox()
+
+        self.calibration_selection_label = QLabel('<b>Active calibration</b>')
+        self.calibration_selection_combo = QComboBox()
         # self.dataset_selection_combo.addItems(['import'])
 
     def position_widgets(self):
@@ -71,28 +119,28 @@ class main_window(QMainWindow):
         self.dataset_selection_layout.addWidget(self.dataset_selection_label)
         self.dataset_selection_layout.addWidget(self.dataset_selection_combo)
 
-        self.hplc_windows_buttons_layout = QHBoxLayout()
-        self.hplc_windows_buttons_layout.addWidget(self.import_wizard_button)
-        self.hplc_windows_buttons_layout.addWidget(self.visualize_data_button)
-        self.hplc_windows_buttons_layout.addWidget(self.open_preprocessing_button)
-        self.hplc_windows_buttons_layout.addWidget(self.open_calibration_button)
-        self.hplc_windows_buttons_layout.addWidget(self.export_wizard_button)
-        self.hplc_windows_buttons_layout.addWidget(self.analyze_data_button)
-        self.hplc_windows_buttons_layout.addLayout(self.dataset_selection_layout)
+        self.calibration_selection_layout = QVBoxLayout()
+        self.calibration_selection_layout.addWidget(
+            self.calibration_selection_label)
+        self.calibration_selection_layout.addWidget(
+            self.calibration_selection_combo)
 
+        self.hplc_data_selection_layout = QHBoxLayout()
+        self.hplc_data_selection_layout.addLayout(
+            self.dataset_selection_layout)
+        self.hplc_data_selection_layout.addLayout(
+            self.calibration_selection_layout)
+        self.hplc_data_selection_layout.addStretch(1)
 
-
-        self.grid_container.addLayout(self.hplc_windows_buttons_layout, 0, 1, 1, 1)
+        self.grid_container.addLayout(
+            self.hplc_data_selection_layout, 0, 1, 1, 1)
 
         # self.grid_container.addWidget(self.import_options_label, *(1, 1), 1, 1)
         # self.spectra_plot_limits_layout.addStretch(1)
 
     def connect_event_handlers(self):
-        self.import_wizard_button.clicked.connect(self.open_import_window)
-        self.open_calibration_button.clicked.connect(self.open_calibration_window)
-        self.visualize_data_button.clicked.connect(self.open_visualization_window)
-
-        self.dataset_selection_combo.currentIndexChanged.connect(self.update_windows)
+        self.dataset_selection_combo.currentIndexChanged.connect(
+            self.update_windows)
         # self.button_import_path.clicked.connect(self.get_import_path)
         # self.button_start_import.clicked.connect(self.start_import)
 
@@ -117,6 +165,71 @@ class main_window(QMainWindow):
             self.hplc_calibration_window.set_active_dataset()
         except:
             pass
+
+    def open_dataset(self):
+        file_type = 'HPLC dataset file (*.hplc)'
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, 'Open HPLC dataset file', filter=file_type)
+        dataset_name = file_name.split('/')[-1]
+
+        if file_name != '':
+            with open(file_name, 'rb') as filehandle:
+                self.hplc_datasets[dataset_name] = pickle.load(filehandle)
+
+            datasets_import_paths = []
+            for curr_dataset in self.hplc_datasets[dataset_name]:
+                datasets_import_paths.append(curr_dataset.import_path)
+            self.hplc_file_names[dataset_name] = datasets_import_paths
+
+            dataset_names = [
+                self.dataset_selection_combo.itemText(i)
+                for i in range(self.dataset_selection_combo.count())]
+
+            if dataset_name not in dataset_names:
+                self.dataset_selection_combo.addItem(dataset_name)
+
+    def save_dataset(self):
+        curr_dataset = self.dataset_selection_combo.currentText()
+
+        file_type = 'HPLC dataset file (*.hplc)'
+        file_name, _ = QFileDialog.getSaveFileName(
+            self, 'Save active HPLC dataset file', curr_dataset + '.hplc',
+            filter=file_type)
+
+        if file_name != '':
+            with open(file_name, 'wb') as filehandle:
+                pickle.dump(self.hplc_datasets[curr_dataset], filehandle)
+
+    def open_calibration(self):
+        file_type = 'HPLC calibration file (*.calib)'
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, 'Open HPLC calibration file', filter=file_type)
+        calibration_name = file_name.split('/')[-1]
+
+        if file_name != '':
+            with open(file_name, 'rb') as filehandle:
+                self.hplc_calibrations[calibration_name] = pickle.load(
+                    filehandle)
+
+            calibration_names = [
+                self.calibration_selection_combo.itemText(i)
+                for i in range(self.calibration_selection_combo.count())]
+
+            if calibration_name not in calibration_names:
+                self.calibration_selection_combo.addItem(calibration_name)
+
+    def save_calibration(self):
+        curr_calibration = self.calibration_selection_combo.currentText()
+
+        file_type = 'HPLC calibration file (*.calib)'
+        file_name, _ = QFileDialog.getSaveFileName(
+            self, 'Save active HPLC calibration file',
+            curr_calibration + '.calib', filter=file_type)
+
+        if file_name != '':
+            with open(file_name, 'wb') as filehandle:
+                pickle.dump(
+                    self.hplc_calibrations[curr_calibration], filehandle)
 
     def center(self):  # centers object on screen
         qr = self.frameGeometry()

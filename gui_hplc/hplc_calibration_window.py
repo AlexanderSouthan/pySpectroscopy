@@ -50,10 +50,14 @@ class hplc_calibration_window(QMainWindow):
         self.time_limits_low_lineedit = QLineEdit('')
         self.time_limits_high_lineedit = QLineEdit('')
         self.calibration_concentrations_lineedit = QLineEdit('')
-        self.update_calibration_button = QPushButton('Update calibration')
+        self.update_calibration_button = QPushButton('Preview calibration')
 
         self.calibration_plot = plot_canvas(
             plot_title='Calibration result',x_axis_title = 'concentration')
+        
+        self.calibration_name_label = QLabel('Calibration name')
+        self.calibration_name_lineedit = QLineEdit('calibration_1')
+        self.save_calibration_button = QPushButton('Accept calibration')
 
     def position_widgets(self):
 
@@ -87,10 +91,16 @@ class hplc_calibration_window(QMainWindow):
         self.calibration_limits_layout.addLayout(
             self.calibration_limits_lineedit_layout)
 
+        self.save_calibration_layout = QHBoxLayout()
+        self.save_calibration_layout.addWidget(self.calibration_name_label)
+        self.save_calibration_layout.addWidget(self.calibration_name_lineedit)
+        self.save_calibration_layout.addWidget(self.save_calibration_button)
+
         self.calibration_layout = QVBoxLayout()
         self.calibration_layout.addLayout(self.calibration_limits_layout)
         self.calibration_layout.addWidget(self.update_calibration_button)
         self.calibration_layout.addWidget(self.calibration_plot)
+        self.calibration_layout.addLayout(self.save_calibration_layout)
 
         # self.calibration_layout.addStretch(1)
 
@@ -106,6 +116,7 @@ class hplc_calibration_window(QMainWindow):
         self.time_limits_high_lineedit.editingFinished.connect(
             self.update_calibration_parameters)
         self.update_calibration_button.clicked.connect(self.update_calibration)
+        self.save_calibration_button.clicked.connect(self.save_calibration)
         # self.calibration_data_textedit.textChanged.connect(self.update_processing_parameters)
 
     def update_calibration_parameters(self):
@@ -141,7 +152,20 @@ class hplc_calibration_window(QMainWindow):
         self.calibration_plot.axes.clear()
         self.calibration_plot.plot(
             self.calibration_parameters['concentrations'],
-            self.calibration.calibration_integrated.T, mode='scatter')
+            self.calibration.calibration_integrated.T, mode='line_symbol')
+
+    def save_calibration(self):
+        calibration_name = self.calibration_name_lineedit.text()
+        self.parent.hplc_calibrations[calibration_name] = []
+
+        self.parent.hplc_calibrations[calibration_name] = (
+            self.calibration)
+
+        dataset_names = [
+            self.parent.calibration_selection_combo.itemText(i)
+            for i in range(self.parent.calibration_selection_combo.count())]
+        if calibration_name not in dataset_names:
+            self.parent.calibration_selection_combo.addItem(calibration_name)
 
     def center(self): # centers object on screen
         qr = self.frameGeometry()

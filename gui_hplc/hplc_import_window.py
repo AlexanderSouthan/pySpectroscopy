@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import sys
 import copy
+from tqdm import tqdm
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
                              QLineEdit, QFileDialog, QGridLayout, QHBoxLayout,
                              QVBoxLayout, QTextEdit, QLabel, QToolTip, QAction,
@@ -87,9 +88,7 @@ class hplc_import_window(QMainWindow):
         self.parent.hplc_file_names[import_dataset_name] = (
             self.import_data_textedit.toPlainText().split('\n'))
 
-        print(self.parent.hplc_file_names[import_dataset_name])
-        
-        for curr_file in self.parent.hplc_file_names[import_dataset_name]:
+        for curr_file in tqdm(self.parent.hplc_file_names[import_dataset_name]):
             self.parent.hplc_datasets[import_dataset_name].append(
                 hplc_data('import', full_path=curr_file))
 

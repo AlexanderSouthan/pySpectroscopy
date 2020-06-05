@@ -60,6 +60,9 @@ class hplc_visualization_window(QMainWindow):
             ['Raw elugram', 'Corrected elugram', 'Raw elugram + baseline',
              'Baseline'])
 
+        self.wl_selection_label = QLabel('Wavelength')
+        self.wl_selection_combo = QComboBox()
+
     def position_widgets(self):
         self.header_layout = QHBoxLayout()
         self.header_layout.addWidget(self.select_sample_label)
@@ -70,25 +73,22 @@ class hplc_visualization_window(QMainWindow):
         self.header_layout.addWidget(self.show_all_checkbox)
         self.header_layout.addWidget(self.data_selection_combo)
 
+        self.header2_layout = QHBoxLayout()
+        self.header2_layout.addWidget(self.wl_selection_label)
+        self.header2_layout.addWidget(self.wl_selection_combo)
+        self.header2_layout.addStretch(1)
+
         self.grid_container.addLayout(self.header_layout, *(0, 0), 1, 1)
-        self.grid_container.addWidget(self.elugram_plot, *(1, 0), 1, 1)
+        self.grid_container.addLayout(self.header2_layout, *(1, 0), 1, 1)
+        self.grid_container.addWidget(self.elugram_plot, *(2, 0), 1, 1)
 
     def connect_event_handlers(self):
-        self.select_sample_spinbox.valueChanged.connect(self.change_elugram)
-        self.show_all_checkbox.stateChanged.connect(self.toggle_all_elugrams)
+        self.select_sample_spinbox.valueChanged.connect(self.update_elugram_plot)
+        self.show_all_checkbox.stateChanged.connect(self.update_elugram_plot)
         self.data_selection_combo.currentIndexChanged.connect(
-            self.toggle_all_elugrams)
-
-    def toggle_all_elugrams(self):
-        if self.show_all_checkbox.checkState() == 2:
-            self.update_elugram_plot(mode='all')
-            self.select_sample_spinbox.setEnabled(False)
-        else:
-            self.update_elugram_plot(mode='single')
-            self.select_sample_spinbox.setEnabled(True)
-
-    def change_elugram(self):
-        self.update_elugram_plot(mode='single')
+            self.update_elugram_plot)
+        self.wl_selection_combo.currentIndexChanged.connect(
+            self.update_elugram_plot)
 
     def update_elugram_plot(self, mode='single'):
         #if self.data_selection_combo.currentText() in ['Raw elugram','Raw elugram + baseline']:
@@ -100,15 +100,24 @@ class hplc_visualization_window(QMainWindow):
         #else:
         #    plot_data = elugrams
 
+        if self.show_all_checkbox.checkState() == 2:
+            mode = 'all'
+            self.select_sample_spinbox.setEnabled(False)
+        else:
+            mode = 'single'
+            self.select_sample_spinbox.setEnabled(True)
+
+        current_wl = float(self.wl_selection_combo.currentText())
+
         current_sample_number = self.select_sample_spinbox.value() - 1
         self.sample_name_lineedit.setText(
-            self.parent.hplc_file_names[self.active_dataset][current_sample_number])
+            self.parent.hplc_datasets[self.active_dataset][current_sample_number].import_path)
 
         self.elugram_plot.axes.clear()
         if mode == 'single':
             self.elugram_plot.plot(
-                self.parent.hplc_datasets[self.active_dataset][current_sample_number].extract_elugram(220).index,
-                self.parent.hplc_datasets[self.active_dataset][current_sample_number].extract_elugram(220), pen='k')
+                self.parent.hplc_datasets[self.active_dataset][current_sample_number].extract_elugram(current_wl).index,
+                self.parent.hplc_datasets[self.active_dataset][current_sample_number].extract_elugram(current_wl), pen='k')
             #if self.data_selection_combo.currentText() in ['Raw elugram + baseline']:
             #    self.elugram_plot.plot(baselines[hplc_data_files[current_sample_number]].index,baselines[hplc_data_files[current_sample_number]],pen='k')
             #if self.data_selection_combo.currentText() in ['Corrected elugram']:
@@ -117,8 +126,8 @@ class hplc_visualization_window(QMainWindow):
         elif mode == 'all':
             for ii, file_name in enumerate(self.parent.hplc_file_names[self.active_dataset]):
                 self.elugram_plot.plot(
-                    self.parent.hplc_datasets[self.active_dataset][ii].extract_elugram(220).index,
-                    self.parent.hplc_datasets[self.active_dataset][ii].extract_elugram(220),
+                    self.parent.hplc_datasets[self.active_dataset][ii].extract_elugram(current_wl).index,
+                    self.parent.hplc_datasets[self.active_dataset][ii].extract_elugram(current_wl),
                     pen='k')
                 #if self.data_selection_combo.currentText() in ['Raw elugram + baseline']:
                 #    self.elugram_plot.plot(baselines[file_name].index,baselines[file_name],pen='k')
@@ -142,4 +151,10 @@ class hplc_visualization_window(QMainWindow):
         self.select_sample_spinbox.setRange(
             1, len(self.parent.hplc_datasets[self.active_dataset]))
         self.sample_name_lineedit.setText(
-            self.parent.hplc_file_names[self.active_dataset][0])
+            self.parent.hplc_datasets[self.active_dataset][0].import_path)
+
+        self.wl_selection_combo.blockSignals(True)
+        self.wl_selection_combo.clear()
+        self.wl_selection_combo.blockSignals(False)
+        self.wl_selection_combo.addItems(
+            ['{:.2f}'.format(x) for x in self.parent.hplc_datasets[self.active_dataset][0].wavelengths])
