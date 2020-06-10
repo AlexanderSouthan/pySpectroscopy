@@ -12,6 +12,7 @@ from sklearn.decomposition import PCA
 # import own packagaes ######################
 import pyPreprocessing.baseline_correction as baseline_correction
 import pyPreprocessing.smoothing as smooth_data
+import pyPreprocessing.transform as transform
 import pyRegression.linear_regression as l_reg
 #############################################
 
@@ -36,6 +37,14 @@ class spectroscopy_data:
                 index=self.spectral_data.index,
                 columns=self.spectral_data.columns),
             'drPLS': pd.DataFrame(
+                np.zeros_like(self.spectral_data.values),
+                index=self.spectral_data.index,
+                columns=self.spectral_data.columns),
+            'ModPoly': pd.DataFrame(
+                np.zeros_like(self.spectral_data.values),
+                index=self.spectral_data.index,
+                columns=self.spectral_data.columns),
+            'IModPoly': pd.DataFrame(
                 np.zeros_like(self.spectral_data.values),
                 index=self.spectral_data.index,
                 columns=self.spectral_data.columns),
@@ -131,38 +140,60 @@ class spectroscopy_data:
 
         return smoothed_data
 
+    def normalize(self, mode, active_spectra=None):
+        active_spectra = self.check_active_spectra(active_spectra)
+
+        normalize_modes = ['total_intensity']
+        assert mode in normalize_modes, 'normalize mode unknown'
+
+        if mode == normalize_modes[0]:  # total_intensity
+            normalized_data = pd.DataFrame(transform.normalize(
+                active_spectra.values, mode,
+                x_data=active_spectra.columns.to_numpy()),
+                index=active_spectra.index, columns=active_spectra.columns)
+            
+        return -normalized_data
+
     # needs to be adapted to fit all baseline correction modes
     def baseline_correction(self, lam=100, lam_1=100, p=0.01, eta=0.5,
                             n_iter=100, conv_crit=0.001, active_spectra=None,
-                            alg='SNIP'):
+                            alg='SNIP', wavenumbers=[], poly_order=5):
         active_spectra = self.check_active_spectra(active_spectra)
 
-        baseline_types = ['ALSS', 'iALSS', 'drPLS', 'SNIP']
+        baseline_types = ['ALSS', 'iALSS', 'drPLS', 'SNIP', 'ModPoly',
+                          'IModPoly']
         assert alg in baseline_types, 'baseline type unknown'
 
-        if alg == baseline_types[0]:
+        if alg == baseline_types[0]:  # ALSS
             self.baseline_data[alg] = pd.DataFrame(
                 baseline_correction.generate_baseline(
                     active_spectra.values, baseline_types[0], lam=lam, p=p,
                     n_iter=n_iter, conv_crit=conv_crit),
                 index=active_spectra.index, columns=active_spectra.columns)
-        elif alg == baseline_types[1]:
+        elif alg == baseline_types[1]:  # iALSS
             self.baseline_data[alg] = pd.DataFrame(
                 baseline_correction.generate_baseline(
                     active_spectra.values, baseline_types[1],
                     wavenumbers=active_spectra.columns.to_numpy(), lam=lam,
                     lam_1=lam_1, p=p, n_iter=n_iter, conv_crit=conv_crit),
                 index=active_spectra.index, columns=active_spectra.columns)
-        elif alg == baseline_types[2]:
+        elif alg == baseline_types[2]:  # drPLS
             self.baseline_data[alg] = pd.DataFrame(
                 baseline_correction.generate_baseline(
                     active_spectra.values, baseline_types[2], lam=lam, eta=eta,
                     n_iter=n_iter, conv_crit=conv_crit),
                 index=active_spectra.index, columns=active_spectra.columns)
-        elif alg == baseline_types[3]:
+        elif alg == baseline_types[3]:  # SNIP
             self.baseline_data[alg] = pd.DataFrame(
                 baseline_correction.generate_baseline(
                     active_spectra.values, baseline_types[3], n_iter=n_iter),
+                index=active_spectra.index, columns=active_spectra.columns)
+        elif alg in baseline_types[4:6]:  # ModPoly, IModPoly
+            self.baseline_data[alg] = pd.DataFrame(
+                baseline_correction.generate_baseline(
+                    active_spectra.values, baseline_types[4],
+                    wavenumbers=wavenumbers, n_iter=n_iter,
+                    poly_order=poly_order),
                 index=active_spectra.index, columns=active_spectra.columns)
 
         corrected_data = active_spectra - self.baseline_data[alg]
