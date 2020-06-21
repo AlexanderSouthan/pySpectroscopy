@@ -156,18 +156,15 @@ class hplc_calibration_window(QMainWindow):
 
     def save_calibration(self):
         calibration_name = self.calibration_name_lineedit.text()
+
+        if calibration_name not in self.parent.hplc_calibrations.keys():
+            self.parent.calibration_selection_list.addItem(calibration_name)
+
         self.parent.hplc_calibrations[calibration_name] = []
 
         self.parent.hplc_calibrations[calibration_name] = (
             self.calibration)
 
-        dataset_names = [
-            self.parent.calibration_selection_combo.itemText(i)
-            for i in range(self.parent.calibration_selection_combo.count())]
-        if calibration_name not in dataset_names:
-            self.parent.calibration_selection_combo.addItem(calibration_name)
-
-    def center(self): # centers object on screen
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)

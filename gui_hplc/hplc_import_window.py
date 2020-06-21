@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import sys
 import copy
+import pickle
 from tqdm import tqdm
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
                              QLineEdit, QFileDialog, QGridLayout, QHBoxLayout,
@@ -17,7 +18,6 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
                              qApp, QPushButton, QDesktopWidget, QCheckBox)
 
 # import own modules ################
-import pyAnalytics.raman_data as raman
 #from gui_objects.plot_canvas import plot_canvas
 from pyAnalytics.hplc_data import hplc_data
 from hplc_calibration_window import hplc_calibration_window
@@ -88,9 +88,18 @@ class hplc_import_window(QMainWindow):
         self.parent.hplc_file_names[import_dataset_name] = (
             self.import_data_textedit.toPlainText().split('\n'))
 
+        import_mode = self.parent.import_filter_group.checkedAction().text()
+
         for curr_file in tqdm(self.parent.hplc_file_names[import_dataset_name]):
-            self.parent.hplc_datasets[import_dataset_name].append(
-                hplc_data('import', full_path=curr_file))
+            if import_mode == self.parent.import_filters[0]:  # 3D ASCII data
+                self.parent.hplc_datasets[import_dataset_name].append(
+                    hplc_data('import', full_path=curr_file))
+            elif import_mode == self.parent.import_filters[1]:  # Pickled hplc_data object
+                with open(curr_file, 'rb') as filehandle:
+                    imported_data = pickle.load(filehandle)
+                self.parent.hplc_datasets[import_dataset_name].append(
+                    imported_data)
+                self.parent.hplc_datasets[import_dataset_name][-1].import_path = curr_file
 
         dataset_names = [
             self.parent.dataset_selection_combo.itemText(i)

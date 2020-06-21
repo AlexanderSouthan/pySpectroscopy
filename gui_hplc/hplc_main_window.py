@@ -10,11 +10,12 @@ import pickle
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
                              QLineEdit, QFileDialog, QGridLayout, QHBoxLayout,
                              QVBoxLayout, QLabel, QAction, QDesktopWidget, 
-                             QActionGroup, QMenu)
+                             QActionGroup, QMenu, QListWidget, QAbstractItemView)
 
 from hplc_import_window import hplc_import_window
 from hplc_calibration_window import hplc_calibration_window
 from hplc_visualization_window import hplc_visualization_window
+from pyAnalytics.hplc_prediction import hplc_prediction
 
 
 class main_window(QMainWindow):
@@ -44,17 +45,17 @@ class main_window(QMainWindow):
         analysis_menu = menubar.addMenu('&Analyze data')
 
         import_filter_menu = QMenu('Dataset import filter', self)
-        import_filter_group = QActionGroup(import_filter_menu)
+        self.import_filter_group = QActionGroup(import_filter_menu)
         # Any entry in the following list generates a new entry in import
         # filter submenu
-        import_filters = ['3D ASCII data']
-        for import_filter in import_filters:
+        self.import_filters = ['3D ASCII data', 'Pickled hplc_data object']
+        for import_filter in self.import_filters:
             import_action = QAction(import_filter, import_filter_menu,
                                     checkable=True,
-                                    checked=import_filter==import_filters[0])
+                                    checked=import_filter==self.import_filters[0])
             import_filter_menu.addAction(import_action)
-            import_filter_group.addAction(import_action)
-        import_filter_group.setExclusive(True)
+            self.import_filter_group.addAction(import_action)
+        self.import_filter_group.setExclusive(True)
         file_menu.addMenu(import_filter_menu)
 
         import_dataset_action = QAction('Import dataset', self)
@@ -102,6 +103,12 @@ class main_window(QMainWindow):
 
         calibration_menu.addAction(calibration_viewer_action)
 
+        simple_cls_action = QAction('Simple cls analysis', self)
+        simple_cls_action.triggered.connect(
+            self.analyze_dataset)
+        
+        analysis_menu.addAction(simple_cls_action)
+
         self.container0 = QWidget(self)
         self.setCentralWidget(self.container0)
 
@@ -115,19 +122,20 @@ class main_window(QMainWindow):
         self.dataset_selection_combo = QComboBox()
 
         self.calibration_selection_label = QLabel('<b>Active calibration</b>')
-        self.calibration_selection_combo = QComboBox()
-        # self.dataset_selection_combo.addItems(['import'])
+        self.calibration_selection_list = QListWidget()
+        self.calibration_selection_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
     def position_widgets(self):
         self.dataset_selection_layout = QVBoxLayout()
         self.dataset_selection_layout.addWidget(self.dataset_selection_label)
         self.dataset_selection_layout.addWidget(self.dataset_selection_combo)
+        self.dataset_selection_layout.addStretch(1)
 
         self.calibration_selection_layout = QVBoxLayout()
         self.calibration_selection_layout.addWidget(
             self.calibration_selection_label)
         self.calibration_selection_layout.addWidget(
-            self.calibration_selection_combo)
+            self.calibration_selection_list)
 
         self.hplc_data_selection_layout = QHBoxLayout()
         self.hplc_data_selection_layout.addLayout(
@@ -145,8 +153,7 @@ class main_window(QMainWindow):
     def connect_event_handlers(self):
         self.dataset_selection_combo.currentIndexChanged.connect(
             self.update_windows)
-        # self.button_import_path.clicked.connect(self.get_import_path)
-        # self.button_start_import.clicked.connect(self.start_import)
+        self.calibration_selection_list.itemClicked.connect(self.set_active_calibrations)
 
     def open_calibration_window(self):
         self.hplc_calibration_window = hplc_calibration_window(self)
@@ -163,6 +170,22 @@ class main_window(QMainWindow):
     def open_import_window(self):
         self.hplc_import_window = hplc_import_window(self)
         self.hplc_import_window.show()
+
+    def analyze_dataset(self):
+        # Analysis is currently performed on one elugram region only.
+        # hplc_prediction can process multiple regions simultaneously, so that
+        # still needs to be used here.
+        curr_dataset = self.hplc_datasets[self.dataset_selection_combo.currentText()]
+        curr_calibrations = []
+        for calib in self.active_calibrations:
+            curr_calibrations.append(self.hplc_calibrations[calib])
+        # curr_calibration = self.hplc_calibrations[self.calibration_selection_combo.currentText()]
+
+        predicted_concentrations = hplc_prediction(
+            curr_dataset, [curr_calibrations])
+
+        print('Simple:', predicted_concentrations.simple_prediction())
+        print('Advanced:', predicted_concentrations.advanced_prediction())
 
     def update_windows(self):
         try:
@@ -215,29 +238,45 @@ class main_window(QMainWindow):
         calibration_name = file_name.split('/')[-1]
 
         if file_name != '':
+            if calibration_name not in self.hplc_calibrations.keys():
+                self.calibration_selection_list.addItem(calibration_name)
+
             with open(file_name, 'rb') as filehandle:
                 self.hplc_calibrations[calibration_name] = pickle.load(
                     filehandle)
 
-            calibration_names = [
-                self.calibration_selection_combo.itemText(i)
-                for i in range(self.calibration_selection_combo.count())]
+            # calibration_names = [
+            #     self.calibration_selection_combo.itemText(i)
+            #     for i in range(self.calibration_selection_combo.count())]
 
-            if calibration_name not in calibration_names:
-                self.calibration_selection_combo.addItem(calibration_name)
+            # if calibration_name not in calibration_names:
+            #     self.calibration_selection_combo.addItem(calibration_name)
+
+            # # the rest is for the QListWidget, currently experimental
+            # calibration_names_1 = []
+            # counter = 0
+            # finished = False
+            # while finished == False:
+            #     curr_item = self.calibration_selection_list.item(counter)
+            #     if curr_item is None:
+            #         finished = True
+            #     else:
+            #         calibration_names_1.append(curr_item.text())
+            #         counter += 1
 
     def save_calibration(self):
-        curr_calibration = self.calibration_selection_combo.currentText()
+        # curr_calibration = self.calibration_selection_combo.currentText()
 
-        file_type = 'HPLC calibration file (*.calib)'
-        file_name, _ = QFileDialog.getSaveFileName(
-            self, 'Save active HPLC calibration file',
-            curr_calibration + '.calib', filter=file_type)
+        for curr_calibration in self.active_calibrations:
+            file_type = 'HPLC calibration file (*.calib)'
+            file_name, _ = QFileDialog.getSaveFileName(
+                self, 'Save active HPLC calibration file',
+                curr_calibration + '.calib', filter=file_type)
 
-        if file_name != '':
-            with open(file_name, 'wb') as filehandle:
-                pickle.dump(
-                    self.hplc_calibrations[curr_calibration], filehandle)
+            if file_name != '':
+                with open(file_name, 'wb') as filehandle:
+                    pickle.dump(
+                        self.hplc_calibrations[curr_calibration], filehandle)
 
     def center(self):  # centers object on screen
         qr = self.frameGeometry()
@@ -245,6 +284,11 @@ class main_window(QMainWindow):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
+    def set_active_calibrations(self):
+        selected = self.calibration_selection_list.selectedItems()
+        self.active_calibrations = []
+        for curr_item in selected:
+            self.active_calibrations.append(curr_item.text())
 
 app = QApplication(sys.argv)
    
