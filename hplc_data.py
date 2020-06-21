@@ -237,6 +237,17 @@ class hplc_data():
 
         return elugram
 
+    def extract_spectrum(self, elution_time, wavelength_limits=None,
+                         active_data=None):
+        active_data = self.check_active_data(active_data)
+
+        spectrum = self.crop_data(
+            time_limits=[elution_time, elution_time],
+            wavelength_limits=wavelength_limits, active_data=active_data
+            ).T
+
+        return spectrum
+
     def integrate_elugram(self, wavelength, time_limits=None,
                           active_data=None):  # , baseline_correction=False):
         """
@@ -272,6 +283,26 @@ class hplc_data():
                                       axis=0).item()
 
         return elugram_integrated
+
+    def generate_projections(self, dim='time', time_limits=None,
+                             wavelength_limits=None, active_data=None):
+        active_data = self.check_active_data(active_data)
+
+        active_data = self.crop_data(time_limits=time_limits,
+                                     wavelength_limits=wavelength_limits,
+                                     active_data=active_data)
+
+        assert dim in ['time', 'wavelength'], 'Allowed values for dim are time and wavelength, current value is {}.'.format(dim)
+        projection_axis = 1 if dim=='time' else 0
+        column_labels = active_data.index if dim=='time' else active_data.columns
+
+        projections = pd.DataFrame([
+            np.amax(active_data.values, axis=projection_axis),
+            np.amin(active_data.values, axis=projection_axis),
+            np.mean(active_data.values, axis=projection_axis)],
+            columns=column_labels, index=['max', 'min', 'mean']).T
+
+        return projections
 
     def integrate_all_data(self, mode='elugrams', time_limits=None,
                            wavelength_limits=None, active_data=None):
