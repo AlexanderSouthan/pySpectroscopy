@@ -87,10 +87,14 @@ class main_window(QMainWindow):
         file_menu.addAction(open_calibration_action)
         file_menu.addAction(save_calibration_action)
 
-        elugram_viewer_action = QAction('2D Elugram viewer', self)
-        elugram_viewer_action.triggered.connect(self.open_visualization_window)
+        elugram_viewer_action = QAction('2D elugram viewer', self)
+        elugram_viewer_action.triggered.connect(self.open_elugram_window)
+
+        spectrum_viewer_action = QAction('2D spectrum viewer', self)
+        spectrum_viewer_action.triggered.connect(self.open_spectrum_window)
 
         visualize_menu.addAction(elugram_viewer_action)
+        visualize_menu.addAction(spectrum_viewer_action)
 
         calibration_viewer_action = QAction('Calibration wizard', self)
         calibration_viewer_action.triggered.connect(
@@ -148,9 +152,13 @@ class main_window(QMainWindow):
         self.hplc_calibration_window = hplc_calibration_window(self)
         self.hplc_calibration_window.show()
 
-    def open_visualization_window(self):
-        self.hplc_visualization_window = hplc_visualization_window(self)
-        self.hplc_visualization_window.show()
+    def open_elugram_window(self):
+        self.hplc_elugram_window = hplc_visualization_window(self, mode='elugram')
+        self.hplc_elugram_window.show()
+
+    def open_spectrum_window(self):
+        self.hplc_spectrum_window = hplc_visualization_window(self, mode='spectrum')
+        self.hplc_spectrum_window.show()
 
     def open_import_window(self):
         self.hplc_import_window = hplc_import_window(self)
@@ -158,7 +166,7 @@ class main_window(QMainWindow):
 
     def update_windows(self):
         try:
-            self.hplc_visualization_window.set_active_dataset()
+            self.hplc_elugram_window.set_active_dataset()
         except:
             pass
         try:
