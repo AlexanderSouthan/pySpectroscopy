@@ -69,11 +69,25 @@ class tensile_test():
             except Exception as e:
                 print('Error while file import in line ' +
                       str(sys.exc_info()[2].tb_lineno) + ': ', e)
-            pass
+
+        elif self.import_mode == 'Philipp Manglkammer':
+            #try:
+            # Read excel file
+            raw_excel = pd.ExcelFile(self.import_file)
+            # Save sheets starting with the third into list
+            self.raw_original = []
+            self.results['name'] = raw_excel.sheet_names[3:]
+            for sheet_name in raw_excel.sheet_names[3:]:
+                self.raw_original.append(
+                        raw_excel.parse(sheet_name, header=2,
+                                        names=['stress', 'strain'],
+                                        usecols=[0, 1]))
+            #except Exception as e:
+            #    print('Error while file import in line ' +
+            #          str(sys.exc_info()[2].tb_lineno) + ': ', e)
 
         else:
-            raise ValueError('No valid import mode entered. Allowed mode is'
-                             ' \'Marc_Stuhlmueller\'.')
+            raise ValueError('No valid import mode entered.')
 
     def calc_e_modulus(self, r_squared_lower_limit=0.995, lower_strain_limit=0,
                   upper_strain_limit=50, smoothing=True, **kwargs):
