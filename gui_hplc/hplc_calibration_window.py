@@ -172,3 +172,9 @@ class hplc_calibration_window(QMainWindow):
 
     def set_active_dataset(self):
         self.active_dataset = self.parent.dataset_selection_combo.currentText()
+
+    def center(self):  # centers object on screen
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())

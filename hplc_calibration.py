@@ -24,7 +24,8 @@ class hplc_calibration():
     """
 
     def __init__(self, data_mode, calibration_data, concentrations,
-                 time_limits=None, wavelength_limits=None, **kwargs):
+                 time_limits=None, wavelength_limits=None,
+                 internal_standard=False, **kwargs):
         """
         Use input data and store them internally in hplc_data instances.
 
@@ -55,11 +56,22 @@ class hplc_calibration():
             and the end wavelength in the spectra used for calibration. Each
             element can either be a number or None. In the latter case, no data
             is removed from the respective side. The default is None.
+        internal_standard : bool, optional
+            Defines if an internal standard was used (True) or not (False). 
+            If this is True, the calibration_data will be normalized
+            accordingly. The default is False.
         **kwargs : 
             pcr_components : int
                 Determines the number of principal components used for
                 principal component regression calibration. The default is 2.
-
+            is_time_limits: list
+                A list containing two elements: The start time in the elugrams
+                and the end time in the elugrams used for internal standard. 
+                Only used when internal_standard is True. The default is None.
+            is_wavelength_limits: list
+                A list containing two elements: The start wavelength  and the
+                end wavelength used for internal standard. Only used when
+                internal_standard is True. The default is None.
         Raises
         ------
         ValueError
@@ -71,18 +83,33 @@ class hplc_calibration():
 
         """
         self.concentrations = np.array(concentrations)
+        self.internal_standard = internal_standard
 
         if data_mode == 'DataFrame':
-            self.calibration_data = []
+            self.calibration_data_raw = []
             for curr_data in calibration_data:
-                self.calibration_data.append(
+                self.calibration_data_raw.append(
                     hplc_data('DataFrame', data=curr_data))
         elif data_mode == 'hplc_data':
-            self.calibration_data = calibration_data
+            self.calibration_data_raw = calibration_data
         else:
             raise ValueError('No valid data_mode given.')
 
         self.set_limits(time_limits, wavelength_limits)
+
+        if self.internal_standard:
+            self.is_time_limits = kwargs.get('is_time_limits', None)
+            self.is_wavelength_limits = kwargs.get('is_wavelength_limits', None)
+            self.calibration_data = []
+            for curr_data in self.calibration_data_raw:
+                self.calibration_data.append(hplc_data(
+                    'DataFrame', data=
+                    curr_data.normalize(
+                        'internal_standard',
+                        time_limits=self.is_time_limits,
+                        wavelength_limits=self.is_wavelength_limits)))
+        else:
+            self.calibration_data = self.calibration_data_raw.copy()
 
         self.integrate_calibration_data()
         self.classical_least_squares()
@@ -174,13 +201,23 @@ class hplc_calibration():
 
         """
         self.calibration_integrated = []
-        for curr_data in self.calibration_data:
+        self.calibration_raw_integrated = []
+        for curr_data, curr_raw_data in zip(
+                self.calibration_data, self.calibration_data_raw):
             self.calibration_integrated.append(
                 curr_data.integrate_all_data(
                     time_limits=self.time_limits,
                     wavelength_limits=self.wavelength_limits))
+
+            self.calibration_raw_integrated.append(
+                curr_raw_data.integrate_all_data(
+                    time_limits=self.time_limits,
+                    wavelength_limits=self.wavelength_limits))
+
         self.calibration_integrated = pd.DataFrame(
             self.calibration_integrated).T
+        self.calibration_raw_integrated = pd.DataFrame(
+            self.calibration_raw_integrated).T
 
     def set_limits(self, time_limits, wavelength_limits):
         """
@@ -206,5 +243,26 @@ class hplc_calibration():
         """
         if time_limits is not None:
             self.time_limits = time_limits
+        else:
+            self.time_limits = None
         if wavelength_limits is not None:
             self.wavelength_limits = wavelength_limits
+        else:
+            self.wavelength_limits=None
+
+    # currently only works for single wavelength calibration
+    def generate_report(self):
+        report_data = pd.DataFrame([], columns=['concentration',
+                                                'raw peak area',
+                                                'internal standard area',
+                                                'normalized peak area'])
+        report_data['concentration'] = self.concentrations
+        report_data['raw peak area'] = np.squeeze(
+            self.calibration_raw_integrated.values)
+        report_data['normalized peak area'] = np.squeeze(
+            self.calibration_integrated.values)
+        if self.internal_standard:
+            for ii, curr_data in enumerate(self.calibration_data_raw):
+                report_data.loc[ii,'internal standard area'] = curr_data.standard_data.values
+        
+        return report_data

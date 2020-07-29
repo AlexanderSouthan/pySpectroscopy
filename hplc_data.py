@@ -362,6 +362,30 @@ class hplc_data():
                                     index=result_index)
         return integrated_data
 
+    def normalize(self, mode, active_data=None, **kwargs):
+        active_data = self.check_active_data(active_data)
+
+        normalization_modes = ['internal_standard']
+
+        if mode == normalization_modes[0]:
+            time_limits = kwargs.get('time_limits', None)
+            wavelength_limits = kwargs.get('wavelength_limits', None)
+
+            active_data = self.crop_data(
+                time_limits=None,
+                wavelength_limits=wavelength_limits,
+                active_data=active_data)
+
+            self.standard_data = self.integrate_all_data(
+                time_limits=time_limits, wavelength_limits=wavelength_limits,
+                active_data=active_data).sum()
+
+            normalized_data = active_data / self.standard_data
+        else:
+            raise ValueError('No valid normalization mode entered.')
+
+        return normalized_data
+
     # next function should not stay in object
     def closest_index_to_value(self, array, value):
         """
