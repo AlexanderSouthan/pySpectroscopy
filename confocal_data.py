@@ -7,9 +7,9 @@ Created on Sun Jan 12 23:24:34 2020
 
 import numpy as np
 import pandas as pd
-from scipy.integrate import cumtrapz,trapz
-import plotly.graph_objects as go
-from plotly.offline import plot
+from scipy.integrate import cumtrapz, trapz
+# import plotly.graph_objects as go
+# from plotly.offline import plot
 
 class confocal_data:
     def __init__(self,confocal_image,decimals_coordinates = 1):
