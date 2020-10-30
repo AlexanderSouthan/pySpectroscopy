@@ -16,12 +16,15 @@ from .confocal_data import confocal_data as confocal_data
 #################################################
 
 class raman_image(spectroscopy_data, confocal_data):
-    def __init__(self,measurement_type=None,file_extension = 'txt',data_source = 'import',directory = None,spectral_data = None,decimals_coordinates = 1):
+    def __init__(self, measurement_type=None, file_extension='txt',
+                 data_source='import', directory=None, spectral_data=None,
+                 decimals_coordinates=1, file_names=None):
         self.directory = directory
         self.measurement_type = measurement_type
         self.file_extension = file_extension
         self.decimals_coordinates = decimals_coordinates
         self.coord_conversion_factor = int(10**self.decimals_coordinates)
+        self.file_names = file_names
 
         if data_source == 'import':
             self.__import_data()  # imports images into self.hyperspectral_image
@@ -29,35 +32,53 @@ class raman_image(spectroscopy_data, confocal_data):
             self.hyperspectral_image = spectral_data
             index_frame = self.hyperspectral_image.index.to_frame()
             index_frame.columns = ['x_coded','y_coded','z_coded']
-            new_index = pd.MultiIndex.from_frame((index_frame*self.coord_conversion_factor).astype(np.int64))
+            new_index = pd.MultiIndex.from_frame(
+                (index_frame*self.coord_conversion_factor).astype(np.int64))
             self.hyperspectral_image.index = new_index
 
         self.wavenumbers = self.hyperspectral_image.columns.to_numpy()
         self.spectral_data = self.hyperspectral_image  # for compatibility with spectroscopy data
 
-        self.baseline_data = {'SNIP':pd.DataFrame(np.zeros_like(self.hyperspectral_image.values),index=self.hyperspectral_image.index,columns=self.hyperspectral_image.columns),
-                              'ALSS':pd.DataFrame(np.zeros_like(self.hyperspectral_image.values),index=self.hyperspectral_image.index,columns=self.hyperspectral_image.columns),
-                              'iALSS':pd.DataFrame(np.zeros_like(self.hyperspectral_image.values),index=self.hyperspectral_image.index,columns=self.hyperspectral_image.columns),
-                              'drPLS':pd.DataFrame(np.zeros_like(self.hyperspectral_image.values),index=self.hyperspectral_image.index,columns=self.hyperspectral_image.columns),
-                              'none':pd.DataFrame(np.zeros_like(self.hyperspectral_image.values),index=self.hyperspectral_image.index,columns=self.hyperspectral_image.columns)}
+        self.baseline_data = {
+            'SNIP':pd.DataFrame(np.zeros_like(self.hyperspectral_image.values),
+                                index=self.hyperspectral_image.index,
+                                columns=self.hyperspectral_image.columns),
+            'ALSS':pd.DataFrame(np.zeros_like(self.hyperspectral_image.values),
+                                index=self.hyperspectral_image.index,
+                                columns=self.hyperspectral_image.columns),
+            'iALSS':pd.DataFrame(np.zeros_like(self.hyperspectral_image.values),
+                                 index=self.hyperspectral_image.index,
+                                 columns=self.hyperspectral_image.columns),
+            'drPLS':pd.DataFrame(np.zeros_like(self.hyperspectral_image.values),
+                                 index=self.hyperspectral_image.index,
+                                 columns=self.hyperspectral_image.columns),
+            'none':pd.DataFrame(np.zeros_like(self.hyperspectral_image.values),
+                                index=self.hyperspectral_image.index,
+                                columns=self.hyperspectral_image.columns)}
         
     ###############################
 #####        basic methods        #############################################
     ###############################
         
     def __import_data(self):
-        file_names = glob.glob(self.directory + '*.' + self.file_extension)
-        self.file_list = pd.DataFrame(file_names,columns=['file_name'],index=np.arange(len(file_names)))
-        self.file_list['x_coded'] = np.zeros(len(file_names),dtype = int)
-        self.file_list['y_coded'] = np.zeros(len(file_names),dtype = int)
-        self.file_list['z_coded'] = np.zeros(len(file_names),dtype = int)        
-        
-        if self.measurement_type in ['Raman_volume','Raman_x_scan','Raman_y_scan','Raman_z_scan','Raman_single_spectrum']:
-            if self.measurement_type in ['Raman_volume','Raman_x_scan']:
+        if self.file_names is None:
+            self.file_names = glob.glob(
+                self.directory + '*.' + self.file_extension)
+
+        self.file_list = pd.DataFrame(self.file_names, columns=['file_name'],
+                                      index=np.arange(len(self.file_names)))
+        self.file_list['x_coded'] = np.zeros(len(self.file_names), dtype=int)
+        self.file_list['y_coded'] = np.zeros(len(self.file_names), dtype=int)
+        self.file_list['z_coded'] = np.zeros(len(self.file_names), dtype=int)
+
+        if self.measurement_type in ['Raman_volume', 'Raman_x_scan',
+                                     'Raman_y_scan', 'Raman_z_scan',
+                                     'Raman_single_spectrum']:
+            if self.measurement_type in ['Raman_volume', 'Raman_x_scan']:
                 self.file_list.iloc[:,1] = (pd.to_numeric(self.file_list.iloc[:,0].str.extract(r'__X_([-*\d*.*\d*]*)\__Y_',expand=False))*self.coord_conversion_factor).astype(int)
-            if self.measurement_type in ['Raman_volume','Raman_y_scan']:
+            if self.measurement_type in ['Raman_volume', 'Raman_y_scan']:
                 self.file_list.iloc[:,2] = (pd.to_numeric(self.file_list.iloc[:,0].str.extract(r'__Y_([-*\d*.*\d*]*)\__Z_',expand=False))*self.coord_conversion_factor).astype(int)            
-            if self.measurement_type in ['Raman_volume','Raman_z_scan']:
+            if self.measurement_type in ['Raman_volume', 'Raman_z_scan']:
                 self.file_list.iloc[:,3] = (pd.to_numeric(self.file_list.iloc[:,0].str.extract(r'__Z_([-*\d*.*\d*]*)\__',expand=False))*self.coord_conversion_factor).astype(int)
             
             self.file_list = self.file_list.sort_values(by=['z_coded','y_coded','x_coded'])
