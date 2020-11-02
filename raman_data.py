@@ -18,7 +18,10 @@ from .confocal_data import confocal_data as confocal_data
 class raman_image(spectroscopy_data, confocal_data):
     def __init__(self, measurement_type=None, file_extension='txt',
                  data_source='import', directory=None, spectral_data=None,
-                 decimals_coordinates=1, file_names=None):
+                 decimals_coordinates=1, file_names=None, **kwargs):
+        self.data_source = data_source
+        self.kwargs = kwargs
+
         self.directory = directory
         self.measurement_type = measurement_type
         self.file_extension = file_extension
@@ -27,41 +30,19 @@ class raman_image(spectroscopy_data, confocal_data):
         self.file_names = file_names
 
         if data_source == 'import':
-            # imports images into self.hyperspectral_image
+            # imports images into self.spectral_data
             self.__import_data()
         elif data_source == 'DataFrame':
-            self.hyperspectral_image = spectral_data
-            index_frame = self.hyperspectral_image.index.to_frame()
+            self.spectral_data = spectral_data
+            index_frame = self.spectral_data.index.to_frame()
             index_frame.columns = ['x_coded', 'y_coded', 'z_coded']
             new_index = pd.MultiIndex.from_frame(
                 (index_frame*self.coord_conversion_factor).astype(np.int64))
-            self.hyperspectral_image.index = new_index
+            self.spectral_data.index = new_index
 
-        self.wavenumbers = self.hyperspectral_image.columns.to_numpy()
-        # for compatibility with spectroscopy data
-        self.spectral_data = self.hyperspectral_image
-
-        self.baseline_data = {
-            'SNIP': pd.DataFrame(
-                np.zeros_like(self.hyperspectral_image.values),
-                index=self.hyperspectral_image.index,
-                columns=self.hyperspectral_image.columns),
-            'ALSS': pd.DataFrame(
-                np.zeros_like(self.hyperspectral_image.values),
-                index=self.hyperspectral_image.index,
-                columns=self.hyperspectral_image.columns),
-            'iALSS': pd.DataFrame(
-                np.zeros_like(self.hyperspectral_image.values),
-                index=self.hyperspectral_image.index,
-                columns=self.hyperspectral_image.columns),
-            'drPLS': pd.DataFrame(
-                np.zeros_like(self.hyperspectral_image.values),
-                index=self.hyperspectral_image.index,
-                columns=self.hyperspectral_image.columns),
-            'none': pd.DataFrame(
-                np.zeros_like(self.hyperspectral_image.values),
-                index=self.hyperspectral_image.index,
-                columns=self.hyperspectral_image.columns)}
+        self.reset_processed_data()
+        self.wavenumbers = self.spectral_data.columns.to_numpy()
+        self.baseline_data = {}
 
     ###############################
 #####        basic methods        #############################################
@@ -161,6 +142,6 @@ class raman_image(spectroscopy_data, confocal_data):
 
         hyperspectral_image_index = pd.MultiIndex.from_frame(
             self.file_list.iloc[:, 1:4])
-        self.hyperspectral_image = pd.DataFrame(
+        self.spectral_data = pd.DataFrame(
             intensities, index=hyperspectral_image_index,
             columns=np.around(wavenumbers, 2))
