@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (QMainWindow, QComboBox, QWidget, QLineEdit,
 # import own modules ################
 #from gui_objects.plot_canvas import plot_canvas
 from pyAnalytics.raman_data import raman_image
+from pyAnalytics.spectroscopy_data import spectroscopy_data
 # from hplc_calibration_window import hplc_calibration_window
 # from hplc_visualization_window import hplc_visualization_window
 #####################################
@@ -40,8 +41,10 @@ class raman_import_window(QMainWindow):
         self.scan_type_label.setText('Data format')
         self.scan_type_combobox = QComboBox(self.container0)
         self.scan_type_combobox.addItems(
-            ['single spectrum', 'z-scan', 'y-scan', 'x-scan', 'volume scan',
-             'Inline-IR', 'LSM'])
+            ['independent spectra', 'z-scan', 'y-scan', 'x-scan',
+             'volume scan'])
+            # ['independent spectra', 'z-scan', 'y-scan', 'x-scan', 'volume scan',
+            #  'Inline-IR', 'LSM'])
         self.add_import_data_button = QPushButton('Add data files for import')
         self.clear_import_data_button = QPushButton('Clear')
         self.import_data_textedit = QTextEdit(readOnly=True)
@@ -86,7 +89,7 @@ class raman_import_window(QMainWindow):
         selected_data_format = self.scan_type_combobox.currentText()
 
         if selected_data_format in ['z-scan', 'volume scan', 'x-scan',
-                                    'y-scan', 'single spectrum']:
+                                    'y-scan', 'independent spectra']:
             data_source = 'import'
             spectral_data = None
             file_extension = 'txt'
@@ -101,33 +104,38 @@ class raman_import_window(QMainWindow):
                 measurement_type = 'Raman_y_scan'
             elif self.scan_type_combobox.currentText() == 'single spectrum':
                 measurement_type = 'Raman_single_spectrum'
-        elif selected_data_format == 'Inline-IR':
-            measurement_type = 'Inline_IR'
-            data_source = 'import'
-            spectral_data = None
-            file_extension = 'spc'
-            decimals_coordinates = 1
-        elif selected_data_format == 'LSM':
-            data_source = 'import'
-            spectral_data = None
-            file_extension = 'tif'
-            measurement_type = 'LSM'
-            decimals_coordinates = 0
+        # elif selected_data_format == 'Inline-IR':
+        #     measurement_type = 'Inline_IR'
+        #     data_source = 'import'
+        #     spectral_data = None
+        #     file_extension = 'spc'
+        #     decimals_coordinates = 1
+        # elif selected_data_format == 'LSM':
+        #     data_source = 'import'
+        #     spectral_data = None
+        #     file_extension = 'tif'
+        #     measurement_type = 'LSM'
+        #     decimals_coordinates = 0
         else:
             raise ValueError('Unknown import type.')
 
         import_dataset_name = self.import_dataset_name_lineedit.text()
-        self.parent.raman_datasets[import_dataset_name] = []
+        # self.parent.raman_datasets[import_dataset_name] = []
         self.parent.raman_file_names[import_dataset_name] = (
             self.import_data_textedit.toPlainText().split('\n'))
 
-        self.parent.raman_datasets[import_dataset_name].append(
-            raman_image(
+        if selected_data_format in ['independent spectra']:
+            self.parent.raman_datasets[import_dataset_name] = spectroscopy_data(
+                data_source=data_source,
+                file_names=self.parent.raman_file_names[import_dataset_name])
+        elif selected_data_format in ['z-scan', 'volume scan', 'x-scan',
+                                      'y-scan']:
+            self.parent.raman_datasets[import_dataset_name] = raman_image(
                 measurement_type=measurement_type,
                 file_names=self.parent.raman_file_names[import_dataset_name],
                 file_extension=file_extension, spectral_data=spectral_data,
                 data_source=data_source,
-                decimals_coordinates=decimals_coordinates))
+                decimals_coordinates=decimals_coordinates)
 
         dataset_names = [
             self.parent.dataset_selection_combo.itemText(i)
