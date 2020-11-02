@@ -17,7 +17,7 @@ class confocal_data:
         self.decimals_coordinates = decimals_coordinates
         self.coord_conversion_factor = int(10**self.decimals_coordinates)
 
-        self.hyperspectral_image = confocal_image
+        self.spectral_data = confocal_image
 
     def get_coord_values(self, value_sort, axis='x', active_image=None):
         active_image = self.check_active_image(active_image)
@@ -39,7 +39,7 @@ class confocal_data:
 
     def check_active_image(self, active_image):
         if active_image is None:
-            active_image = self.hyperspectral_image
+            active_image = self.spectral_data
         return active_image
 
     ###########################
