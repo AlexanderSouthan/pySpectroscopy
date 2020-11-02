@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun May 12 20:40:26 2019
-
-@author: AlMaMi
-"""
 
 import sys
 import pickle
@@ -13,6 +8,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
                              QActionGroup, QMenu, QListWidget, QAbstractItemView)
 
 from raman_import_window import raman_import_window
+from raman_visualization_window import raman_visualization_window
 # from hplc_calibration_window import hplc_calibration_window
 # from hplc_visualization_window import hplc_visualization_window
 # from pyAnalytics.hplc_prediction import hplc_prediction
@@ -25,7 +21,7 @@ class main_window(QMainWindow):
         self.init_window()
         self.define_widgets()
         self.position_widgets()
-        # self.connect_event_handlers()
+        self.connect_event_handlers()
 
         self.raman_datasets = {}
         self.raman_file_names = {}
@@ -61,6 +57,14 @@ class main_window(QMainWindow):
         file_menu.addAction(import_dataset_action)
         file_menu.addAction(open_dataset_action)
         file_menu.addAction(save_dataset_action)
+
+        spectra_visualization_action = QAction('Show spectrum plots', self)
+        spectra_visualization_action.setStatusTip(
+            'Open spectrum visulization tool')
+        spectra_visualization_action.triggered.connect(
+            self.open_visulization_window)
+        
+        visualize_menu.addAction(spectra_visualization_action)
 
         # elugram_viewer_action = QAction('2D elugram viewer', self)
         # elugram_viewer_action.triggered.connect(self.open_elugram_window)
@@ -113,23 +117,22 @@ class main_window(QMainWindow):
     def connect_event_handlers(self):
         self.dataset_selection_combo.currentIndexChanged.connect(
             self.update_windows)
-        self.calibration_selection_list.itemClicked.connect(self.set_active_calibrations)
-
-    # def open_calibration_window(self):
-    #     self.hplc_calibration_window = hplc_calibration_window(self)
-    #     self.hplc_calibration_window.show()
-
-    # def open_elugram_window(self):
-    #     self.hplc_elugram_window = hplc_visualization_window(self, mode='elugram')
-    #     self.hplc_elugram_window.show()
-
-    # def open_spectrum_window(self):
-    #     self.hplc_spectrum_window = hplc_visualization_window(self, mode='spectrum')
-    #     self.hplc_spectrum_window.show()
+        # self.calibration_selection_list.itemClicked.connect(self.set_active_calibrations)
 
     def open_import_window(self):
         self.raman_import_window = raman_import_window(self)
         self.raman_import_window.show()
+
+    def open_visulization_window(self):
+        self.raman_visualization_window = raman_visualization_window(
+            self.active_dataset())
+        self.raman_visualization_window.show()
+
+    def active_dataset(self):
+        active_dataset = self.raman_datasets[
+            self.dataset_selection_combo.currentText()]
+
+        return active_dataset
 
     # def analyze_dataset(self):
     #     # Analysis is currently performed on one elugram region only.
@@ -147,25 +150,21 @@ class main_window(QMainWindow):
     #     print('Simple:', predicted_concentrations.simple_prediction())
     #     print('Advanced:', predicted_concentrations.advanced_prediction())
 
-    # def update_windows(self):
-    #     try:
-    #         self.hplc_elugram_window.set_active_dataset()
-    #     except:
-    #         pass
-    #     try:
-    #         self.hplc_calibration_window.set_active_dataset()
-    #     except:
-    #         pass
+    def update_windows(self):
+        try:
+            self.raman_visualization_window.update_data(self.active_dataset())
+        except:
+            pass
 
     def open_dataset(self):
         file_type = 'Raman dataset file (*.raman)'
         file_name, _ = QFileDialog.getOpenFileName(
-            self, 'Open HPLC dataset file', filter=file_type)
+            self, 'Open Raman dataset file', filter=file_type)
         dataset_name = file_name.split('/')[-1]
 
         if file_name != '':
             with open(file_name, 'rb') as filehandle:
-                self.raman_datasets[dataset_name] = pickle.load(filehandle)[0]
+                self.raman_datasets[dataset_name] = pickle.load(filehandle)
 
             self.raman_file_names[dataset_name] = self.raman_datasets[
                 dataset_name].file_names
