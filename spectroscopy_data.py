@@ -17,27 +17,67 @@ import pyRegression.linear_regression as l_reg
 
 
 class spectroscopy_data:
-    def __init__(self, spectral_data):
+    def __init__(self, data_source='import', **kwargs):
         """
         Initialize the spectroscopy_data instance.
 
         Parameters
         ----------
-        spectral_data : pandas DataFrame
-            A pandas DataFrame containing the spectral information. Each line
-            contains one spectrum. The index may contain sample names, numbers,
-            or e.g. coordinates from Raman maps. The column index must be the
-            wavenumber/wavelength scale sorted in decreasing order.
+        data_source : str, optional
+            The data source of the spectral data. Default is import which
+            means that the data is imported from ASCII files. Alternatively,
+            the data can be given in a DataFrame with 'DataFrame'.
+
+        **kwargs for the different data_source values
+        data_source == 'import'
+            file_names : list of str
+                A list of strings giving full paths to the files to be
+                imported. The files must contain the spectral data in two
+                columns. The first column must contain the wavenumber data and
+                the second column the intensity data. All spectra must have
+                identical wavenumber data. The file names will result as the
+                index in the self.spectral_data DataFrame.
+        data_source == 'DataFrame'
+            spectral_data : pandas DataFrame
+                A pandas DataFrame containing the spectral information. Each
+                line contains one spectrum. The index may contain sample names,
+                numbers, or e.g. coordinates from Raman maps. The column index
+                must be the wavenumber/wavelength scale sorted in decreasing
+                order.
 
         Returns
         -------
         None.
 
         """
-        self.spectral_data = spectral_data
+        self.data_source = data_source
+        self.kwargs = kwargs
+
+        self.__import_data()
         self.reset_processed_data()
         self.wavenumbers = self.spectral_data.columns.to_numpy()
         self.baseline_data = {}
+
+    def __import_data(self):
+        if self.data_source == 'DataFrame':
+            self.spectral_data = self.kwargs.get('spectral_data')
+
+        elif self.data_source == 'import':
+            self.file_names = self.kwargs.get('file_names')
+
+            wavenumbers = np.fromfile(self.file_names[0], sep=' ')[::2]
+            intensities = np.zeros((len(self.file_names), wavenumbers.size))
+            for idx, curr_file in enumerate(tqdm(self.file_names)):
+                intensities[idx] = np.fromfile(curr_file, sep=' ')[1::2]
+
+            fname_index = pd.Series(self.file_names).str.rsplit(
+                '/', n=1, expand=True)[1]
+            self.spectral_data = pd.DataFrame(
+                intensities, index=fname_index,
+                columns=np.around(wavenumbers, 2))
+
+        else:
+            raise ValueError('Value of data_source not understood.')
 
     def reset_processed_data(self):
         self.spectral_data_processed = self.spectral_data.copy()
@@ -258,7 +298,7 @@ class spectroscopy_data:
         active_spectra = self.check_active_spectra(active_spectra)
 
         if mode in ['convex_hull', 'ModPoly', 'IModPoly', 'PPF', 'iALSS']:
-            kwargs['wavenumbers'] = self.active_spectra.columns.to_numpy()
+            kwargs['wavenumbers'] = active_spectra.columns.to_numpy()
 
         self.baseline_data[mode] = pd.DataFrame(
             generate_baseline(active_spectra.values, mode, smoothing=True,
