@@ -7,11 +7,9 @@ from PyQt5.QtWidgets import (QMainWindow, QComboBox, QWidget,
                              QVBoxLayout, QLabel, QToolTip,
                              QDesktopWidget, QPushButton)
 
-# import own modules ################
 from gui_objects.plot_canvas import plot_canvas
 from pyAnalytics.spectroscopy_data import spectroscopy_data
 from pyAnalytics.raman_data import raman_image
-#####################################
 
 
 class raman_visualization_window(QMainWindow):
@@ -244,7 +242,7 @@ class raman_visualization_window(QMainWindow):
         else:
             baseline_plot_data = None
 
-        #get index values for wavenumber limits in plot
+        # Get index values for wavenumber limits in plot
         closest_index_to_lower_wn = np.argmin(np.abs(
             self.spectra_plot_data.columns-lower_wn))
         closest_index_to_upper_wn = np.argmin(np.abs(
@@ -269,9 +267,11 @@ class raman_visualization_window(QMainWindow):
                         [self.file_name_combo.currentText()], :]
 
         min_intensity = self.spectra_plot_data.iloc[
-            :, closest_index_to_upper_wn:closest_index_to_lower_wn+1].values.min()
+            :, closest_index_to_upper_wn:closest_index_to_lower_wn+1
+            ].values.min()
         max_intensity = self.spectra_plot_data.iloc[
-            :, closest_index_to_upper_wn:closest_index_to_lower_wn+1].values.max()
+            :, closest_index_to_upper_wn:closest_index_to_lower_wn+1
+            ].values.max()
 
         # curr_baseline_wn = baseline_plot_data.columns
 
@@ -299,8 +299,10 @@ class raman_visualization_window(QMainWindow):
 
         self.plot_data_edited = self.raman_data.spectral_data_processed
 
-        closest_index_to_lower_wn = np.argmin(np.abs(self.plot_data_edited.columns-lower_wn))
-        closest_index_to_upper_wn = np.argmin(np.abs(self.plot_data_edited.columns-upper_wn))
+        closest_index_to_lower_wn = np.argmin(
+            np.abs(self.plot_data_edited.columns-lower_wn))
+        closest_index_to_upper_wn = np.argmin(
+            np.abs(self.plot_data_edited.columns-upper_wn))
 
         if self.show_spectra_combo.currentText() == 'Single spectrum':
             if type(self.raman_data) is raman_image:
@@ -312,8 +314,12 @@ class raman_visualization_window(QMainWindow):
                 self.plot_data_edited = self.plot_data_edited.loc[
                     [self.file_name_combo.currentText()], :]
 
-        min_intensity = self.plot_data_edited.iloc[:, closest_index_to_upper_wn:closest_index_to_lower_wn].values.min()
-        max_intensity = self.plot_data_edited.iloc[:, closest_index_to_upper_wn:closest_index_to_lower_wn].values.max()
+        min_intensity = self.plot_data_edited.iloc[
+            :, closest_index_to_upper_wn:closest_index_to_lower_wn
+            ].values.min()
+        max_intensity = self.plot_data_edited.iloc[
+            :, closest_index_to_upper_wn:closest_index_to_lower_wn
+            ].values.max()
         curr_wavenumbers = self.plot_data_edited.columns
 
         self.spectra_plot_edited.axes.clear()
@@ -355,19 +361,22 @@ class raman_visualization_window(QMainWindow):
                 np.char.mod('%s', np.around(
                     self.raman_data.get_coord_values(
                         'real', axis='x',
-                        active_image=self.raman_data.spectral_data_processed), 1)))
+                        active_image=self.raman_data.spectral_data_processed),
+                    1)))
 
             self.y_coord_combo_edited.addItems(
                 np.char.mod('%s', np.around(
                     self.raman_data.get_coord_values(
                         'real', axis='y',
-                        active_image=self.raman_data.spectral_data_processed), 1)))
+                        active_image=self.raman_data.spectral_data_processed),
+                    1)))
 
             self.z_coord_combo_edited.addItems(
                 np.char.mod('%s', np.around(
                     self.raman_data.get_coord_values(
                         'real', axis='z',
-                        active_image=self.raman_data.spectral_data_processed), 1)))
+                        active_image=self.raman_data.spectral_data_processed),
+                    1)))
 
         elif type(self.raman_data) is spectroscopy_data:
             self.file_name_combo.addItems(

@@ -11,6 +11,10 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
 from raman_import_window import raman_import_window
 from raman_visualization_window import raman_visualization_window
 from raman_preprocessing_window import raman_preprocessing_window
+from raman_pca_window import raman_pca_window
+from pyRegression.pca_viewer import pca_viewer
+from raman_ref_spec_fit_window import raman_ref_spec_fit_window
+from reference_spectra_fit_viewer import reference_spectra_fit_viewer
 # from hplc_calibration_window import hplc_calibration_window
 # from hplc_visualization_window import hplc_visualization_window
 # from pyAnalytics.hplc_prediction import hplc_prediction
@@ -35,10 +39,9 @@ class main_window(QMainWindow):
         self.statusBar().showMessage('Welcome')
         menubar = self.menuBar()
         file_menu = menubar.addMenu('&File')
-        visualize_menu = menubar.addMenu('&Visualize')
         preprocess_menu = menubar.addMenu('&Preprocessing')
-        calibration_menu = menubar.addMenu('&Calibration')
         analysis_menu = menubar.addMenu('&Analyze data')
+        visualize_menu = menubar.addMenu('&Visualize')
 
         import_dataset_action = QAction('Import dataset', self)
         import_dataset_action.setShortcut('Ctrl+I')
@@ -54,7 +57,7 @@ class main_window(QMainWindow):
         save_dataset_action.setShortcut('Ctrl+S')
         save_dataset_action.setStatusTip('Save dataset to file')
         save_dataset_action.triggered.connect(self.save_dataset)
-        
+
         close_datasets_action = QAction('Unload all datasets', self)
         close_datasets_action.setStatusTip('Unload all datasets')
         close_datasets_action.triggered.connect(self.init_datasets)
@@ -64,19 +67,41 @@ class main_window(QMainWindow):
         file_menu.addAction(save_dataset_action)
         file_menu.addAction(close_datasets_action)
 
-        spectra_visualization_action = QAction('Show spectrum plots', self)
-        spectra_visualization_action.setStatusTip(
-            'Open spectrum visulization tool')
-        spectra_visualization_action.triggered.connect(
-            self.open_visulization_window)
-
-        visualize_menu.addAction(spectra_visualization_action)
-
         preprocessing_action = QAction('Spectrum preprocessing', self)
         preprocessing_action.setStatusTip('Spectrum preprocessing')
         preprocessing_action.triggered.connect(self.open_preprocessing_window)
 
         preprocess_menu.addAction(preprocessing_action)
+
+        pca_action = QAction('PCA', self)
+        pca_action.setStatusTip('Perform principal component analysis')
+        pca_action.triggered.connect(self.open_pca_window)
+        ref_spec_fit_action = QAction('Reference spectra fit', self)
+        ref_spec_fit_action.setStatusTip('Perform reference spectra fit')
+        ref_spec_fit_action.triggered.connect(self.open_ref_spec_fit_window)
+
+        analysis_menu.addAction(pca_action)
+        analysis_menu.addAction(ref_spec_fit_action)
+
+        spectra_visualization_action = QAction('Spectrum plots', self)
+        spectra_visualization_action.setStatusTip(
+            'Open spectrum visulization tool')
+        spectra_visualization_action.triggered.connect(
+            self.open_visulization_window)
+        pca_viewer_action = QAction('PCA results', self)
+        pca_viewer_action.setStatusTip(
+            'View principal component analysis results')
+        pca_viewer_action.triggered.connect(self.open_pca_viewer)
+        ref_spec_fit_viewer_action = QAction(
+            'Reference spectra fit results', self)
+        ref_spec_fit_viewer_action.setStatusTip(
+            'View reference spectra fit results')
+        ref_spec_fit_viewer_action.triggered.connect(
+            self.open_ref_spec_fit_viewer)
+
+        visualize_menu.addAction(spectra_visualization_action)
+        visualize_menu.addAction(pca_viewer_action)
+        visualize_menu.addAction(ref_spec_fit_viewer_action)
 
         # elugram_viewer_action = QAction('2D elugram viewer', self)
         # elugram_viewer_action.triggered.connect(self.open_elugram_window)
@@ -160,6 +185,52 @@ class main_window(QMainWindow):
                                       'preprocess!')
             error_message.exec_()
 
+    def open_pca_window(self):
+        if len(self.raman_datasets) > 0:
+            self.raman_pca_window = raman_pca_window(
+                self.active_dataset())
+            self.raman_pca_window.show()
+        else:
+            error_message = QErrorMessage()
+            error_message.showMessage('No active dataset available to '
+                                      'analyze!')
+            error_message.exec_()
+
+    def open_pca_viewer(self):
+        if (len(self.raman_datasets) > 0) and hasattr(
+                self.active_dataset(), 'pca'):
+            self.pca_viewer = pca_viewer(self.active_dataset())
+            self.pca_viewer.show()
+        else:
+            error_message = QErrorMessage()
+            error_message.showMessage('No PCA data available to visualize! '
+                                      'Perform PCA first.')
+            error_message.exec_()
+
+    def open_ref_spec_fit_window(self):
+        if len(self.raman_datasets) > 0:
+            self.ref_spec_fit_window = raman_ref_spec_fit_window(
+                self.active_dataset())
+            self.ref_spec_fit_window.show()
+        else:
+            error_message = QErrorMessage()
+            error_message.showMessage('No active dataset available to '
+                                      'analyze!')
+            error_message.exec_()
+
+    def open_ref_spec_fit_viewer(self):
+        if (len(self.raman_datasets) > 0) and hasattr(
+                self.active_dataset(), 'fitted_spectra'):
+            self.ref_spec_fit_viewer = reference_spectra_fit_viewer(
+                self.active_dataset())
+            self.ref_spec_fit_viewer.show()
+        else:
+            error_message = QErrorMessage()
+            error_message.showMessage('No reference spectra fit dataset '
+                                      'available to visualize! Perform '
+                                      'reference spectra fit first.')
+            error_message.exec_()
+
     def active_dataset(self):
         active_dataset = self.raman_datasets[
             self.dataset_selection_combo.currentText()]
@@ -173,6 +244,14 @@ class main_window(QMainWindow):
             pass
         try:
             self.raman_baseline_window.update_data(self.active_dataset())
+        except:
+            pass
+        try:
+            self.raman_pca_window.update_data(self.active_dataset())
+        except:
+            pass
+        try:
+            self.pca_viewer.update_data(self.active_dataset())
         except:
             pass
 
