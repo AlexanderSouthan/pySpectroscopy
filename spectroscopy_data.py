@@ -8,12 +8,13 @@ import pandas as pd
 from sklearn.preprocessing import scale
 from tqdm import tqdm
 from scipy.integrate import cumtrapz
-from sklearn.decomposition import PCA
+# from sklearn.decomposition import PCA
 
 from pyPreprocessing.baseline_correction import generate_baseline
 from pyPreprocessing.smoothing import smoothing as smooth_data
 import pyPreprocessing.transform as transform
 import pyRegression.linear_regression as l_reg
+from pyRegression.multivariate_regression import principal_component_regression
 
 
 class spectroscopy_data:
@@ -382,18 +383,12 @@ class spectroscopy_data:
                                      active_spectra=None):
         active_spectra = self.check_active_spectra(active_spectra)
 
-        pca = PCA(n_components=pca_components)
-        scores = pca.fit_transform(active_spectra)
-        loadings = pca.components_.T  # * np.sqrt(pca.explained_variance_)
+        self.pca = principal_component_regression(
+            active_spectra)
 
-        list_pc_components = ['pc' + str(ii)
-                              for ii in np.arange(pca_components)]
+        self.pca.perform_pca(pca_components)
 
-        return {'scores': pd.DataFrame(scores, index=active_spectra.index,
-                                       columns=list_pc_components),
-                'loadings': pd.DataFrame(loadings.T, index=list_pc_components,
-                                         columns=active_spectra.columns),
-                'explained_variance': pca.explained_variance_ratio_}
+        return self.pca
 
     def reference_spectra_fit(self, reference_data, active_spectra=None):
         active_spectra = self.check_active_spectra(active_spectra)
@@ -402,17 +397,15 @@ class spectroscopy_data:
         list_reference_components = ['comp' + str(ii) for ii in np.arange(
             reference_components)]
 
-        fit_coeffs = pd.DataFrame(
-            np.empty((len(active_spectra.index), len(reference_data.index))),
-            index=active_spectra.index, columns=list_reference_components)
-        # self.fit_results = np.empty(len(active_spectra.index),dtype=object)
+        self.ref_coefs = pd.DataFrame(l_reg.dataset_regression(
+            active_spectra.values, reference_data), index=active_spectra.index,
+            columns=list_reference_components)
 
-        for ii in tqdm(np.arange(len(active_spectra.index))):
-            current_fit_result = l_reg.dataset_regression(
-                active_spectra.iloc[ii, :], reference_data)
-            fit_coeffs.iloc[ii, :] = current_fit_result
-            # self.fit_results[ii] = current_fit_result
-        return fit_coeffs
+        self.fitted_spectra = pd.DataFrame(
+            np.dot(self.ref_coefs.values, reference_data),
+            index=active_spectra.index, columns=active_spectra.columns)
+
+        return (self.fitted_spectra, self.ref_coefs)
 
 #     def find_peaks(self,active_spectra=None):#is still experimental
 #         active_spectra = self.check_active_spectra(active_spectra)
