@@ -5,10 +5,12 @@ import pickle
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
                              QLineEdit, QFileDialog, QGridLayout, QHBoxLayout,
                              QVBoxLayout, QLabel, QAction, QDesktopWidget, 
-                             QActionGroup, QMenu, QListWidget, QAbstractItemView)
+                             QActionGroup, QMenu, QListWidget,
+                             QAbstractItemView, QErrorMessage)
 
 from raman_import_window import raman_import_window
 from raman_visualization_window import raman_visualization_window
+from raman_preprocessing_window import raman_preprocessing_window
 # from hplc_calibration_window import hplc_calibration_window
 # from hplc_visualization_window import hplc_visualization_window
 # from pyAnalytics.hplc_prediction import hplc_prediction
@@ -23,8 +25,7 @@ class main_window(QMainWindow):
         self.position_widgets()
         self.connect_event_handlers()
 
-        self.raman_datasets = {}
-        self.raman_file_names = {}
+        self.init_datasets()
 
     def init_window(self):
         self.setGeometry(500, 500, 1200, 100)  # xPos, yPos, width, heigth
@@ -53,18 +54,29 @@ class main_window(QMainWindow):
         save_dataset_action.setShortcut('Ctrl+S')
         save_dataset_action.setStatusTip('Save dataset to file')
         save_dataset_action.triggered.connect(self.save_dataset)
+        
+        close_datasets_action = QAction('Unload all datasets', self)
+        close_datasets_action.setStatusTip('Unload all datasets')
+        close_datasets_action.triggered.connect(self.init_datasets)
 
         file_menu.addAction(import_dataset_action)
         file_menu.addAction(open_dataset_action)
         file_menu.addAction(save_dataset_action)
+        file_menu.addAction(close_datasets_action)
 
         spectra_visualization_action = QAction('Show spectrum plots', self)
         spectra_visualization_action.setStatusTip(
             'Open spectrum visulization tool')
         spectra_visualization_action.triggered.connect(
             self.open_visulization_window)
-        
+
         visualize_menu.addAction(spectra_visualization_action)
+
+        preprocessing_action = QAction('Spectrum preprocessing', self)
+        preprocessing_action.setStatusTip('Spectrum preprocessing')
+        preprocessing_action.triggered.connect(self.open_preprocessing_window)
+
+        preprocess_menu.addAction(preprocessing_action)
 
         # elugram_viewer_action = QAction('2D elugram viewer', self)
         # elugram_viewer_action.triggered.connect(self.open_elugram_window)
@@ -111,22 +123,42 @@ class main_window(QMainWindow):
         self.grid_container.addLayout(
             self.hplc_data_selection_layout, 0, 1, 1, 1)
 
-        # self.grid_container.addWidget(self.import_options_label, *(1, 1), 1, 1)
-        # self.spectra_plot_limits_layout.addStretch(1)
-
     def connect_event_handlers(self):
         self.dataset_selection_combo.currentIndexChanged.connect(
             self.update_windows)
         # self.calibration_selection_list.itemClicked.connect(self.set_active_calibrations)
+
+    def init_datasets(self):
+        self.raman_datasets = {}
+        self.raman_file_names = {}
+
+        self.dataset_selection_combo.clear()
 
     def open_import_window(self):
         self.raman_import_window = raman_import_window(self)
         self.raman_import_window.show()
 
     def open_visulization_window(self):
-        self.raman_visualization_window = raman_visualization_window(
-            self.active_dataset())
-        self.raman_visualization_window.show()
+        if len(self.raman_datasets) > 0:
+            self.raman_visualization_window = raman_visualization_window(
+                self.active_dataset())
+            self.raman_visualization_window.show()
+        else:
+            error_message = QErrorMessage()
+            error_message.showMessage('No active dataset available to '
+                                      'visualize!')
+            error_message.exec_()
+
+    def open_preprocessing_window(self):
+        if len(self.raman_datasets) > 0:
+            self.raman_preprocessing_window = raman_preprocessing_window(
+                self.active_dataset())
+            self.raman_preprocessing_window.show()
+        else:
+            error_message = QErrorMessage()
+            error_message.showMessage('No active dataset available to '
+                                      'preprocess!')
+            error_message.exec_()
 
     def active_dataset(self):
         active_dataset = self.raman_datasets[
@@ -134,25 +166,13 @@ class main_window(QMainWindow):
 
         return active_dataset
 
-    # def analyze_dataset(self):
-    #     # Analysis is currently performed on one elugram region only.
-    #     # hplc_prediction can process multiple regions simultaneously, so that
-    #     # still needs to be used here.
-    #     curr_dataset = self.hplc_datasets[self.dataset_selection_combo.currentText()]
-    #     curr_calibrations = []
-    #     for calib in self.active_calibrations:
-    #         curr_calibrations.append(self.hplc_calibrations[calib])
-    #     # curr_calibration = self.hplc_calibrations[self.calibration_selection_combo.currentText()]
-
-    #     predicted_concentrations = hplc_prediction(
-    #         curr_dataset, [curr_calibrations])
-
-    #     print('Simple:', predicted_concentrations.simple_prediction())
-    #     print('Advanced:', predicted_concentrations.advanced_prediction())
-
     def update_windows(self):
         try:
-            self.raman_visualization_window.update_data(self.active_dataset())
+            self.raman_visualization_window.replace_data(self.active_dataset())
+        except:
+            pass
+        try:
+            self.raman_baseline_window.update_data(self.active_dataset())
         except:
             pass
 

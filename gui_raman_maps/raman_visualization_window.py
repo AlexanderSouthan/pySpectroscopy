@@ -5,7 +5,7 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (QMainWindow, QComboBox, QWidget,
                              QLineEdit, QGridLayout, QHBoxLayout,
                              QVBoxLayout, QLabel, QToolTip,
-                             QDesktopWidget)
+                             QDesktopWidget, QPushButton)
 
 # import own modules ################
 from gui_objects.plot_canvas import plot_canvas
@@ -23,7 +23,7 @@ class raman_visualization_window(QMainWindow):
         self.position_widgets(raman_data)
 
         self.spectra_plots_active = True
-        self.update_data(raman_data)
+        self.replace_data(raman_data)
 
         self.connect_event_handlers()
 
@@ -82,9 +82,11 @@ class raman_visualization_window(QMainWindow):
         self.file_name_combo = QComboBox()
         self.file_name_combo.setEnabled(False)
 
+        self.update_data_button = QPushButton('Update')
+
     def position_widgets(self, raman_data):
-        self.grid_container.addWidget(self.spectra_plot, *(0, 0), 1, 1)
-        self.grid_container.addWidget(self.spectra_plot_edited, *(0, 1), 1, 1)
+        self.grid_container.addWidget(self.spectra_plot, *(1, 0), 1, 1)
+        self.grid_container.addWidget(self.spectra_plot_edited, *(2, 0), 1, 1)
 
         self.show_spectra_layout = QHBoxLayout()
         self.show_spectra_layout.addWidget(self.show_spectra_combo)
@@ -103,6 +105,14 @@ class raman_visualization_window(QMainWindow):
             self.draw_vertical_lines_label)
         self.draw_vertical_lines_layout.addWidget(
             self.draw_vertical_lines_lineedit)
+
+        self.plot_options_layout = QVBoxLayout()
+        self.plot_options_layout.addLayout(self.show_spectra_layout)
+        self.plot_options_layout.addLayout(
+            self.wavenumber_limits_labels_layout)
+        self.plot_options_layout.addLayout(
+            self.wavenumber_limits_combos_layout)
+        self.plot_options_layout.addLayout(self.draw_vertical_lines_layout)
 
         self.sample_selection_layout = QVBoxLayout()
 
@@ -136,25 +146,24 @@ class raman_visualization_window(QMainWindow):
         self.sample_selection_layout.addWidget(self.file_name_label)
         self.sample_selection_layout.addWidget(self.file_name_combo)
 
-        self.spectra_plot_limits_layout = QVBoxLayout()
-        self.spectra_plot_limits_layout.addLayout(self.show_spectra_layout)
-        self.spectra_plot_limits_layout.addLayout(
-            self.wavenumber_limits_labels_layout)
-        self.spectra_plot_limits_layout.addLayout(
-            self.wavenumber_limits_combos_layout)
-        self.spectra_plot_limits_layout.addLayout(
-            self.draw_vertical_lines_layout)
+        self.update_data_layout = QHBoxLayout()
+        self.update_data_layout.addStretch(1)
+        self.update_data_layout.addWidget(self.update_data_button)
+
+        self.spectra_plot_limits_layout = QHBoxLayout()
+        self.spectra_plot_limits_layout.addLayout(self.plot_options_layout)
+        self.spectra_plot_limits_layout.addStretch(1)
         self.spectra_plot_limits_layout.addLayout(
             self.sample_selection_layout)
         self.spectra_plot_limits_layout.addStretch(1)
+        self.spectra_plot_limits_layout.addLayout(self.update_data_layout)
 
         self.grid_container.addLayout(self.spectra_plot_limits_layout,
-                                      *(0, 2), 1, 1)
+                                      *(0, 0), 1, 1)
 
     def connect_event_handlers(self):
-        pass
-        # self.show_baseline_combo.currentIndexChanged.connect(
-        #     self.update_spectra_plots)
+        self.show_baseline_combo.currentIndexChanged.connect(
+            self.update_spectra_plots)
         self.lower_wn_lineedit.editingFinished.connect(
             self.update_spectra_plots)
         self.upper_wn_lineedit.editingFinished.connect(
@@ -177,6 +186,8 @@ class raman_visualization_window(QMainWindow):
             self.update_spectra_edited_plot)
         self.file_name_combo.currentIndexChanged.connect(
             self.update_spectra_plots)
+        
+        self.update_data_button.clicked.connect(self.update_data)
 
     def center(self):  # centers object on screen
         qr = self.frameGeometry()
@@ -184,7 +195,13 @@ class raman_visualization_window(QMainWindow):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def update_data(self, raman_data):
+    def update_data(self):
+        self.replace_data(self.raman_data)
+
+    def replace_data(self, raman_data):
+        # Disables the update_spectra_plots function.
+        self.spectra_plots_active = False
+
         self.raman_data = raman_data
         self.wavenumbers = self.raman_data.spectral_data.columns.to_numpy()
 
@@ -196,6 +213,9 @@ class raman_visualization_window(QMainWindow):
 
         self.initialize_coord_combos()
         self.change_active_coord_combos()
+
+        # Now the update_spectra_plots function will do something.
+        self.spectra_plots_active = True
 
         self.update_spectra_plots()
 
@@ -219,7 +239,10 @@ class raman_visualization_window(QMainWindow):
         v_line_coords = v_line_string.split(',') if v_line_string != '' else []
 
         self.spectra_plot_data = self.raman_data.spectral_data
-        # baseline_plot_data = self.raman_data.baseline_data[baseline_option]
+        if baseline_option != '':
+            baseline_plot_data = self.raman_data.baseline_data[baseline_option]
+        else:
+            baseline_plot_data = None
 
         #get index values for wavenumber limits in plot
         closest_index_to_lower_wn = np.argmin(np.abs(
@@ -233,10 +256,17 @@ class raman_visualization_window(QMainWindow):
                     [(self.get_coord('coded', axis='x'),
                       self.get_coord('coded', axis='y'),
                       self.get_coord('coded', axis='z'))], :]
+                if baseline_plot_data is not None:
+                    baseline_plot_data = baseline_plot_data.loc[
+                        [(self.get_coord('coded', axis='x'),
+                          self.get_coord('coded', axis='y'),
+                          self.get_coord('coded', axis='z'))], :]
             elif type(self.raman_data) is spectroscopy_data:
                 self.spectra_plot_data = self.spectra_plot_data.loc[
                     [self.file_name_combo.currentText()], :]
-            # baseline_plot_data = baseline_plot_data.loc[[(self.get_coord('coded',axis = 'x'),self.get_coord('coded',axis = 'y'),self.get_coord('coded',axis = 'z'))]]
+                if baseline_plot_data is not None:
+                    baseline_plot_data = baseline_plot_data.loc[
+                        [self.file_name_combo.currentText()], :]
 
         min_intensity = self.spectra_plot_data.iloc[
             :, closest_index_to_upper_wn:closest_index_to_lower_wn+1].values.min()
@@ -246,9 +276,11 @@ class raman_visualization_window(QMainWindow):
         # curr_baseline_wn = baseline_plot_data.columns
 
         self.spectra_plot.axes.clear()
-        self.spectra_plot.plot(self.raman_data.wavenumbers,self.spectra_plot_data.values.T,pen='b')
-        # if baseline_option != 'none':
-        #     self.spectra_plot.plot(curr_baseline_wn,baseline_plot_data.values.T,pen='b')
+        self.spectra_plot.plot(self.raman_data.wavenumbers,
+                               self.spectra_plot_data.values.T, pen='b')
+        if baseline_plot_data is not None:
+            self.spectra_plot.plot(baseline_plot_data.columns,
+                                   baseline_plot_data.values.T, pen='b')
         for xc in v_line_coords:
             self.spectra_plot.axes.axvline(x=float(xc),color='k')
         self.spectra_plot.axes.set_xlim(left=lower_wn,right=upper_wn)
