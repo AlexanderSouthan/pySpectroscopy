@@ -305,8 +305,12 @@ class spectroscopy_data:
                               tranform=False, **kwargs),
             index=active_spectra.index, columns=active_spectra.columns)
 
-        corrected_data = active_spectra - self.baseline_data[mode]
-        return corrected_data.round(decimals=6)
+        corrected_data = (active_spectra -
+                          self.baseline_data[mode]).round(decimals=6)
+
+        self.spectral_data_processed = corrected_data
+
+        return corrected_data
 
     def generate_sample_clipping_mask(self, active_spectra, limits, dimension):
         if limits is not None:
