@@ -39,7 +39,7 @@ class confocal_data:
 
     def check_active_image(self, active_image):
         if active_image is None:
-            active_image = self.spectral_data
+            active_image = self.spectral_data_processed
         return active_image
 
     ###########################
