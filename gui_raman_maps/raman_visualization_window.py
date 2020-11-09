@@ -203,8 +203,8 @@ class raman_visualization_window(QMainWindow):
         self.raman_data = raman_data
         self.wavenumbers = self.raman_data.spectral_data.columns.to_numpy()
 
-        self.lower_wn_lineedit.setText(str(self.wavenumbers[-1]))
-        self.upper_wn_lineedit.setText(str(self.wavenumbers[0]))
+        self.lower_wn_lineedit.setText(str(self.wavenumbers[0]))
+        self.upper_wn_lineedit.setText(str(self.wavenumbers[-1]))
 
         self.show_baseline_combo.clear()
         self.show_baseline_combo.addItems(self.raman_data.baseline_data.keys())
@@ -247,6 +247,11 @@ class raman_visualization_window(QMainWindow):
             self.spectra_plot_data.columns-lower_wn))
         closest_index_to_upper_wn = np.argmin(np.abs(
             self.spectra_plot_data.columns-upper_wn))
+        if baseline_plot_data is not None:
+            closest_index_to_lower_wn_baseline = np.argmin(np.abs(
+                baseline_plot_data.columns-lower_wn))
+            closest_index_to_upper_wn_baseline = np.argmin(np.abs(
+                baseline_plot_data.columns-upper_wn))
 
         if self.show_spectra_combo.currentText() == 'Single spectrum':
             if type(self.raman_data) is raman_image:
@@ -267,11 +272,23 @@ class raman_visualization_window(QMainWindow):
                         [self.file_name_combo.currentText()], :]
 
         min_intensity = self.spectra_plot_data.iloc[
-            :, closest_index_to_upper_wn:closest_index_to_lower_wn+1
+            :, closest_index_to_lower_wn:closest_index_to_upper_wn+1
             ].values.min()
         max_intensity = self.spectra_plot_data.iloc[
-            :, closest_index_to_upper_wn:closest_index_to_lower_wn+1
+            :, closest_index_to_lower_wn:closest_index_to_upper_wn+1
             ].values.max()
+        if baseline_plot_data is not None:
+            min_baseline = baseline_plot_data.iloc[
+                :, closest_index_to_lower_wn_baseline:
+                    closest_index_to_upper_wn_baseline+1].values.min()
+            max_baseline = baseline_plot_data.iloc[
+                :, closest_index_to_lower_wn_baseline:
+                    closest_index_to_upper_wn_baseline+1].values.max()
+        else:
+            min_baseline = min_intensity
+            max_baseline = max_intensity
+        min_y = min(min_intensity, min_baseline)
+        max_y = max(max_intensity, max_baseline)
 
         # curr_baseline_wn = baseline_plot_data.columns
 
@@ -284,7 +301,7 @@ class raman_visualization_window(QMainWindow):
         for xc in v_line_coords:
             self.spectra_plot.axes.axvline(x=float(xc),color='k')
         self.spectra_plot.axes.set_xlim(left=lower_wn,right=upper_wn)
-        self.spectra_plot.axes.set_ylim(bottom=min_intensity,top=max_intensity)
+        self.spectra_plot.axes.set_ylim(bottom=min_y,top=max_y)
         self.spectra_plot.draw()
 
     def update_spectra_edited_plot(self):
@@ -315,10 +332,10 @@ class raman_visualization_window(QMainWindow):
                     [self.file_name_combo.currentText()], :]
 
         min_intensity = self.plot_data_edited.iloc[
-            :, closest_index_to_upper_wn:closest_index_to_lower_wn
+            :, closest_index_to_lower_wn:closest_index_to_upper_wn
             ].values.min()
         max_intensity = self.plot_data_edited.iloc[
-            :, closest_index_to_upper_wn:closest_index_to_lower_wn
+            :, closest_index_to_lower_wn:closest_index_to_upper_wn
             ].values.max()
         curr_wavenumbers = self.plot_data_edited.columns
 
@@ -361,21 +378,21 @@ class raman_visualization_window(QMainWindow):
                 np.char.mod('%s', np.around(
                     self.raman_data.get_coord_values(
                         'real', axis='x',
-                        active_image=self.raman_data.spectral_data_processed),
+                        active_data=self.raman_data.spectral_data_processed),
                     1)))
 
             self.y_coord_combo_edited.addItems(
                 np.char.mod('%s', np.around(
                     self.raman_data.get_coord_values(
                         'real', axis='y',
-                        active_image=self.raman_data.spectral_data_processed),
+                        active_data=self.raman_data.spectral_data_processed),
                     1)))
 
             self.z_coord_combo_edited.addItems(
                 np.char.mod('%s', np.around(
                     self.raman_data.get_coord_values(
                         'real', axis='z',
-                        active_image=self.raman_data.spectral_data_processed),
+                        active_data=self.raman_data.spectral_data_processed),
                     1)))
 
         elif type(self.raman_data) is spectroscopy_data:
@@ -416,7 +433,7 @@ class raman_visualization_window(QMainWindow):
                     
                 if len(self.raman_data.get_coord_values(
                         'coded', axis = 'x',
-                        active_image=self.raman_data.spectral_data_processed)
+                        active_data=self.raman_data.spectral_data_processed)
                         ) > 1:
                     self.x_coord_combo_edited.setEnabled(True)
                 else:
@@ -424,7 +441,7 @@ class raman_visualization_window(QMainWindow):
                     
                 if len(self.raman_data.get_coord_values(
                         'coded', axis = 'y',
-                        active_image=self.raman_data.spectral_data_processed)
+                        active_data=self.raman_data.spectral_data_processed)
                         ) > 1:
                     self.y_coord_combo_edited.setEnabled(True)
                 else:
@@ -432,7 +449,7 @@ class raman_visualization_window(QMainWindow):
                 
                 if len(self.raman_data.get_coord_values(
                         'coded', axis = 'z',
-                        active_image=self.raman_data.spectral_data_processed)
+                        active_data=self.raman_data.spectral_data_processed)
                         ) > 1:
                     self.z_coord_combo_edited.setEnabled(True)
                 else:

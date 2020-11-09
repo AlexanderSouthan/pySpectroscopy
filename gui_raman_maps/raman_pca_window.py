@@ -17,7 +17,7 @@ class raman_pca_window(QMainWindow):
     def init_window(self):
         self.setGeometry(500, 500, 600, 360) #xPos,yPos,width, heigth
         self.center() #center function is defined below
-        self.setWindowTitle('Change spectrum processing options')
+        self.setWindowTitle('Principal component analysis options')
 
         self.container0 = QWidget(self)
         self.setCentralWidget(self.container0)

@@ -1,13 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Jan 12 23:24:34 2020
 
-@author: AlMaMi
-"""
-
-import numpy as np
 import pandas as pd
-from scipy.integrate import cumtrapz, trapz
 # import plotly.graph_objects as go
 # from plotly.offline import plot
 
@@ -19,17 +12,17 @@ class confocal_data:
 
         self.spectral_data = confocal_image
 
-    def get_coord_values(self, value_sort, axis='x', active_image=None):
-        active_image = self.check_active_image(active_image)
+    def get_coord_values(self, value_sort, axis='x', active_data=None):
+        active_data = self.check_active_data(active_data)
 
         if axis == 'x':
-            return_value = active_image.index.get_level_values(
+            return_value = active_data.index.get_level_values(
                 'x_coded').drop_duplicates().to_numpy().astype(int)
         elif axis == 'y':
-            return_value = active_image.index.get_level_values(
+            return_value = active_data.index.get_level_values(
                 'y_coded').drop_duplicates().to_numpy().astype(int)
         elif axis == 'z':
-            return_value = active_image.index.get_level_values(
+            return_value = active_data.index.get_level_values(
                 'z_coded').drop_duplicates().to_numpy().astype(int)
 
         if value_sort == 'real':
@@ -37,74 +30,10 @@ class confocal_data:
 
         return return_value
 
-    def check_active_image(self, active_image):
-        if active_image is None:
-            active_image = self.spectral_data_processed
-        return active_image
-
-    ###########################
-#####     imaging methods     #################################################
-    ###########################
-
-    def multi2monochrome(self, mode='int_at_point', wavenumber1=521,
-                         wavenumber2=None, active_image=None, pca_components=7,
-                         fit_mode='Levenberg-Marquardt', ref_spec=None,
-                         max_iter=1000, initial_guess=None, lower_bounds=None,
-                         upper_bounds=None):
-        # convert multichrome images to monochrome
-
-        active_image = self.check_active_image(active_image)
-
-        if mode == 'int_at_point':
-            self.monochrome_image = active_image.loc[
-                :, [active_image.columns[
-                    np.argmin(np.abs(active_image.columns - wavenumber1))]]]
-            self.monochrome_image.columns = [mode + '_' + str(wavenumber1)]
-        elif mode in ['sig_to_base', 'sig_to_axis']:
-            self.hyperspectral_image_integrated = self.integrate_image(
-                active_spectra=active_image)
-            closest_index_lower = np.argmin(np.abs(
-                self.hyperspectral_image_integrated.columns-wavenumber1))
-            closest_index_upper = np.argmin(np.abs(
-                self.hyperspectral_image_integrated.columns-wavenumber2))
-
-            baseline_x_array = np.array(
-                [self.hyperspectral_image_integrated.columns[
-                    closest_index_lower],
-                    self.hyperspectral_image_integrated.columns[
-                        closest_index_upper]])
-            baseline_y_array = active_image.loc[:, baseline_x_array]
-            self.area_under_baseline = trapz(
-                baseline_y_array, x=baseline_x_array) if mode == 'sig_to_base' else 0
-
-            self.monochrome_image = self.hyperspectral_image_integrated.iloc[
-                :, closest_index_lower].values-self.hyperspectral_image_integrated.iloc[:,closest_index_upper].values - self.area_under_baseline
-            self.monochrome_image = pd.DataFrame(
-                self.monochrome_image, index=active_image.index,
-                columns=[mode + '_' + str(wavenumber1) + '_' +
-                         str(wavenumber2)])
-        elif mode == 'pca':
-            self.pca_results = self.principal_component_analysis(
-                pca_components, active_spectra=active_image)
-            self.monochrome_image = self.pca_results['scores']
-
-            #reconstruction_pca_components = 3
-            #self.reconstructed_pca_image = pd.DataFrame(np.dot(self.pca_results['scores'].iloc[:,0:reconstruction_pca_components],
-            #                                self.pca_results['loadings'].iloc[0:reconstruction_pca_components,:])
-            #                                + self.mean_spectrum(active_image = active_image).values,
-            #                                index = active_image.index,columns = active_image.columns)
-        elif mode == 'ref_spec_fit':
-            self.monochrome_image = self.reference_spectra_fit(
-                ref_spec, active_spectra=active_image)
-            self.fitted_spectra = pd.DataFrame(
-                np.dot(self.monochrome_image.values, ref_spec.values),
-                index=self.monochrome_image.index, columns=ref_spec.columns)
-        else:
-            self.monochrome_image = pd.DataFrame(
-                np.zeros((len(active_image.index), 1)),
-                index=active_image.index, columns=['empty image'])
-
-        return self.monochrome_image
+    def check_active_data(self, active_data):
+        if active_data is None:
+            active_data = self.spectral_data_processed
+        return active_data
 
     def generate_intensity_projections(self, col_index):
         """Generates maximum intensity projection from numpy array with 8-bit
@@ -167,16 +96,16 @@ class confocal_data:
                          surface_count=100):
         # This function is based on plotly which is currently not imported, so
         # this function is not functional.
-        active_image = self.__decode_image_index(
-                active_image=self.monochrome_image)
+        active_data = self.__decode_image_index(
+                active_data=self.monochrome_image)
 
-        coords = active_image.index.to_frame()
+        coords = active_data.index.to_frame()
 
         fig = go.Figure()
         fig.add_trace(go.Volume(x=coords['x_values'],
                                 y=coords['y_values'],
                                 z=coords['z_values'],
-                                value=active_image.loc[:, col_index],
+                                value=active_data.loc[:, col_index],
                                 isomin=min_value,
                                 isomax=max_value,
                                 opacity=opacity,
@@ -224,13 +153,13 @@ class confocal_data:
 
         if axis == 'z':
             curr_axis_values = self.get_coord_values(
-                'coded', axis='z', active_image=self.monochrome_image)
+                'coded', axis='z', active_data=self.monochrome_image)
         elif axis == 'y':
             curr_axis_values = self.get_coord_values(
-                'coded', axis='y', active_image=self.monochrome_image)
+                'coded', axis='y', active_data=self.monochrome_image)
         elif axis == 'x':
             curr_axis_values = self.get_coord_values(
-                'coded', axis='x', active_image=self.monochrome_image)
+                'coded', axis='x', active_data=self.monochrome_image)
 
         for curr_coord in curr_axis_values:
             for curr_column in self.monochrome_image.columns:
@@ -246,19 +175,19 @@ class confocal_data:
                     str(curr_coord) + '.txt', sep='\t')
 
     def export_monochrome_image(self, export_path, export_name):
-        active_image = self.__decode_image_index(self.monochrome_image)
-        active_image.to_csv(export_path + export_name + '.txt', sep='\t',
+        active_data = self.__decode_image_index(self.monochrome_image)
+        active_data.to_csv(export_path + export_name + '.txt', sep='\t',
                             header=True)
 
-    def __decode_image_index(self, active_image):
-        active_image_copy = active_image.copy()
-        active_image_index_frame = active_image_copy.index.to_frame()
-        active_image_index_frame.columns = ['x_values', 'y_values', 'z_values']
-        active_image_new_index = pd.MultiIndex.from_frame(
-            active_image_index_frame/self.coord_conversion_factor)
+    def __decode_image_index(self, active_data):
+        active_data_copy = active_data.copy()
+        active_data_index_frame = active_data_copy.index.to_frame()
+        active_data_index_frame.columns = ['x_values', 'y_values', 'z_values']
+        active_data_new_index = pd.MultiIndex.from_frame(
+            active_data_index_frame/self.coord_conversion_factor)
 
-        active_image_copy.index = active_image_new_index
-        return active_image_copy
+        active_data_copy.index = active_data_new_index
+        return active_data_copy
 
     ###########################
 #####     extract methods     #################################################

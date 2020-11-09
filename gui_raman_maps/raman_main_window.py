@@ -5,12 +5,13 @@ import pickle
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
                              QLineEdit, QFileDialog, QGridLayout, QHBoxLayout,
                              QVBoxLayout, QLabel, QAction, QDesktopWidget, 
-                             QActionGroup, QMenu, QListWidget,
+                             QActionGroup, QMenu, QListWidget, QPushButton,
                              QAbstractItemView, QErrorMessage)
 
 from raman_import_window import raman_import_window
 from raman_visualization_window import raman_visualization_window
 from raman_preprocessing_window import raman_preprocessing_window
+from raman_univariate_analysis_window import raman_univariate_analysis_window
 from raman_pca_window import raman_pca_window
 from pyRegression.pca_viewer import pca_viewer
 from raman_ref_spec_fit_window import raman_ref_spec_fit_window
@@ -73,6 +74,9 @@ class main_window(QMainWindow):
 
         preprocess_menu.addAction(preprocessing_action)
 
+        univariate_analysis_action = QAction('Univariate analysis', self)
+        univariate_analysis_action.setStatusTip('Perform univariate analysis')
+        univariate_analysis_action.triggered.connect(self.open_uva_window)
         pca_action = QAction('PCA', self)
         pca_action.setStatusTip('Perform principal component analysis')
         pca_action.triggered.connect(self.open_pca_window)
@@ -80,6 +84,7 @@ class main_window(QMainWindow):
         ref_spec_fit_action.setStatusTip('Perform reference spectra fit')
         ref_spec_fit_action.triggered.connect(self.open_ref_spec_fit_window)
 
+        analysis_menu.addAction(univariate_analysis_action)
         analysis_menu.addAction(pca_action)
         analysis_menu.addAction(ref_spec_fit_action)
 
@@ -133,11 +138,13 @@ class main_window(QMainWindow):
     def define_widgets(self):
         self.dataset_selection_label = QLabel('<b>Active dataset</b>')
         self.dataset_selection_combo = QComboBox()
+        self.update_datasets_button = QPushButton('Update dataset list')
 
     def position_widgets(self):
-        self.dataset_selection_layout = QVBoxLayout()
+        self.dataset_selection_layout = QHBoxLayout()
         self.dataset_selection_layout.addWidget(self.dataset_selection_label)
         self.dataset_selection_layout.addWidget(self.dataset_selection_combo)
+        self.dataset_selection_layout.addWidget(self.update_datasets_button)
         self.dataset_selection_layout.addStretch(1)
 
         self.hplc_data_selection_layout = QHBoxLayout()
@@ -151,16 +158,22 @@ class main_window(QMainWindow):
     def connect_event_handlers(self):
         self.dataset_selection_combo.currentIndexChanged.connect(
             self.update_windows)
+        self.update_datasets_button.clicked.connect(self.update_datasets)
         # self.calibration_selection_list.itemClicked.connect(self.set_active_calibrations)
 
     def init_datasets(self):
         self.raman_datasets = {}
-        self.raman_file_names = {}
+        # self.raman_file_names = {}
 
         self.dataset_selection_combo.clear()
 
+    def update_datasets(self):
+        dataset_names = self.raman_datasets.keys()
+        self.dataset_selection_combo.clear()
+        self.dataset_selection_combo.addItems(dataset_names)
+
     def open_import_window(self):
-        self.raman_import_window = raman_import_window(self)
+        self.raman_import_window = raman_import_window(self.raman_datasets)
         self.raman_import_window.show()
 
     def open_visulization_window(self):
@@ -183,6 +196,17 @@ class main_window(QMainWindow):
             error_message = QErrorMessage()
             error_message.showMessage('No active dataset available to '
                                       'preprocess!')
+            error_message.exec_()
+
+    def open_uva_window(self):
+        if len(self.raman_datasets) > 0:
+            self.raman_univariate_analysis_window = raman_univariate_analysis_window(
+                self.active_dataset())
+            self.raman_univariate_analysis_window.show()
+        else:
+            error_message = QErrorMessage()
+            error_message.showMessage('No active dataset available to '
+                                      'analyze!')
             error_message.exec_()
 
     def open_pca_window(self):
@@ -254,6 +278,11 @@ class main_window(QMainWindow):
             self.pca_viewer.update_data(self.active_dataset())
         except:
             pass
+        try:
+            self.raman_univariate_analysis_window.update_data(
+                self.active_dataset())
+        except:
+            pass
 
     def open_dataset(self):
         file_type = 'Raman dataset file (*.raman)'
@@ -265,8 +294,8 @@ class main_window(QMainWindow):
             with open(file_name, 'rb') as filehandle:
                 self.raman_datasets[dataset_name] = pickle.load(filehandle)
 
-            self.raman_file_names[dataset_name] = self.raman_datasets[
-                dataset_name].file_names
+            # self.raman_file_names[dataset_name] = self.raman_datasets[
+            #     dataset_name].file_names
 
             dataset_names = [
                 self.dataset_selection_combo.itemText(i)

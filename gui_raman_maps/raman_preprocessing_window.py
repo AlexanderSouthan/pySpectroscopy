@@ -43,7 +43,7 @@ class raman_preprocessing_window(QMainWindow):
         self.ALSS_lam_lineedit = QLineEdit(self.container0)
         self.ALSS_p_label = QLabel('p',self.container0)
         self.ALSS_p_lineedit = QLineEdit(self.container0)
-        self.ALSS_niter_label = QLabel('n_iter',self.container0)
+        self.ALSS_niter_label = QLabel('n_iter', self.container0)
         self.ALSS_niter_lineedit = QLineEdit(self.container0)
 
         self.iALSS_label = QLabel('<b>iALSS baseline options</b>') 
@@ -53,7 +53,7 @@ class raman_preprocessing_window(QMainWindow):
         self.iALSS_lam_1_lineedit = QLineEdit(self.container0)
         self.iALSS_p_label = QLabel('p',self.container0)
         self.iALSS_p_lineedit = QLineEdit(self.container0)
-        self.iALSS_niter_label = QLabel('n_iter',self.container0)
+        self.iALSS_niter_label = QLabel('n_iter', self.container0)
         self.iALSS_niter_lineedit = QLineEdit(self.container0)
         
         self.drPLS_label = QLabel('<b>drPLS baseline options</b>') 
@@ -61,24 +61,34 @@ class raman_preprocessing_window(QMainWindow):
         self.drPLS_lam_lineedit = QLineEdit(self.container0)
         self.drPLS_eta_label = QLabel('eta',self.container0)
         self.drPLS_eta_lineedit = QLineEdit(self.container0)
-        self.drPLS_niter_label = QLabel('n_iter',self.container0)
+        self.drPLS_niter_label = QLabel('n_iter', self.container0)
         self.drPLS_niter_lineedit = QLineEdit(self.container0)
 
         self.SNIP_label = QLabel('<b>SNIP baseline options</b>') 
         self.SNIP_niter_label = QLabel('n_iter',self.container0)
         self.SNIP_niter_lineedit = QLineEdit(self.container0)
 
-        self.ModPoly_label = QLabel('<b>ModPoly and IModPoly baseline options</b>') 
+        self.ModPoly_label = QLabel('<b>ModPoly and IModPoly baseline options</b>')
         self.ModPoly_niter_label = QLabel('n_iter',self.container0)
         self.ModPoly_niter_lineedit = QLineEdit(self.container0)
-        self.ModPoly_polyorder_label = QLabel('poly_order',self.container0)
+        self.ModPoly_polyorder_label = QLabel('poly_order', self.container0)
         self.ModPoly_polyorder_lineedit = QLineEdit(self.container0)
 
+        self.PPF_label = QLabel('<b>Piecewise polynomial baseline options</b>')
+        self.PPF_niter_label = QLabel('n_iter', self.container0)
+        self.PPF_niter_lineedit = QLineEdit(self.container0)
+        self.PPF_polyorders_label = QLabel('poly_orders', self.container0)
+        self.PPF_polyorders_lineedit = QLineEdit(self.container0)
+        self.PPF_segment_borders_label = QLabel('segment_borders', self.container0)
+        self.PPF_segment_borders_lineedit = QLineEdit(self.container0)
+        self.PPF_fit_method_label = QLabel('fit method', self.container0)
+        self.PPF_fit_method_lineedit = QLineEdit(self.container0)
+
         self.sav_gol_label = QLabel('<b>Savitzky-Golay options</b>') 
-        self.derivative_order_label = QLabel('Differentiation order',self.container0)
+        self.derivative_order_label = QLabel('Differentiation order', self.container0)
         self.derivative_order_combo = QComboBox(self.container0)
         self.derivative_order_combo.addItems(['0','1','2'])
-        self.savgol_points_label = QLabel('Data points for Savitzky-Golay (one side)',self.container0)
+        self.savgol_points_label = QLabel('Data points for Savitzky-Golay (one side)', self.container0)
         self.savgol_points_combo = QComboBox(self.container0)
         self.savgol_points_combo.addItems(['0','1','2','3','4','5','6','7','8','9'])
 
@@ -139,6 +149,16 @@ class raman_preprocessing_window(QMainWindow):
         self.ModPoly_selection_layout.addWidget(self.ModPoly_polyorder_label)
         self.ModPoly_selection_layout.addWidget(self.ModPoly_polyorder_lineedit)
 
+        self.PPF_selection_layout = QHBoxLayout()
+        self.PPF_selection_layout.addWidget(self.PPF_niter_label)
+        self.PPF_selection_layout.addWidget(self.PPF_niter_lineedit)
+        self.PPF_selection_layout.addWidget(self.PPF_polyorders_label)
+        self.PPF_selection_layout.addWidget(self.PPF_polyorders_lineedit)
+        self.PPF_selection_layout.addWidget(self.PPF_segment_borders_label)
+        self.PPF_selection_layout.addWidget(self.PPF_segment_borders_lineedit)
+        self.PPF_selection_layout.addWidget(self.PPF_fit_method_label)
+        self.PPF_selection_layout.addWidget(self.PPF_fit_method_lineedit)
+
         self.sav_gol_selection_layout = QHBoxLayout()
         self.sav_gol_selection_layout.addWidget(self.savgol_points_label)
         self.sav_gol_selection_layout.addWidget(self.savgol_points_combo)
@@ -171,6 +191,8 @@ class raman_preprocessing_window(QMainWindow):
         self.preprocessing_layout.addLayout(self.SNIP_selection_layout)
         self.preprocessing_layout.addWidget(self.ModPoly_label)
         self.preprocessing_layout.addLayout(self.ModPoly_selection_layout)
+        self.preprocessing_layout.addWidget(self.PPF_label)
+        self.preprocessing_layout.addLayout(self.PPF_selection_layout)
         self.preprocessing_layout.addWidget(self.preprocessing_label)
         self.preprocessing_layout.addWidget(self.sav_gol_label)
         self.preprocessing_layout.addLayout(self.sav_gol_selection_layout)
@@ -213,6 +235,14 @@ class raman_preprocessing_window(QMainWindow):
         self.ModPoly_niter_lineedit.editingFinished.connect(
             self.update_processing_parameters)
         self.ModPoly_polyorder_lineedit.editingFinished.connect(
+            self.update_processing_parameters)
+        self.PPF_niter_lineedit.editingFinished.connect(
+            self.update_processing_parameters)
+        self.PPF_polyorders_lineedit.editingFinished.connect(
+            self.update_processing_parameters)
+        self.PPF_segment_borders_lineedit.editingFinished.connect(
+            self.update_processing_parameters)
+        self.PPF_fit_method_lineedit.editingFinished.connect(
             self.update_processing_parameters)
 
         self.savgol_points_combo.currentIndexChanged.connect(
@@ -266,6 +296,15 @@ class raman_preprocessing_window(QMainWindow):
         self.ModPoly_polyorder_lineedit.setText(
             str(current_options_dict['IModPoly']['poly_order']))
 
+        self.PPF_niter_lineedit.setText(
+            str(current_options_dict['PPF']['n_iter']))
+        self.PPF_polyorders_lineedit.setText(
+            str(current_options_dict['PPF']['poly_orders']))
+        self.PPF_segment_borders_lineedit.setText(
+            str(current_options_dict['PPF']['segment_borders']))
+        self.PPF_fit_method_lineedit.setText(
+            str(current_options_dict['PPF']['fit_method']))
+
         self.derivative_order_combo.setCurrentIndex(
             self.derivative_order_combo.findText(
                 str(current_options_dict['sav_gol']['deriv'])))
@@ -316,6 +355,10 @@ class raman_preprocessing_window(QMainWindow):
                 'n_iter': 100, 'poly_order': 5},
             'IModPoly': {
                 'n_iter': 100, 'poly_order': 5},
+            'PPF': {
+                'n_iter': 100, 'poly_orders': [3, 3],
+                'segment_borders': [1000], 'fit_method': 'ModPoly'},
+            'convex_hull': {},
             'sav_gol': {
                 'deriv': 0, 'savgol_points': 9},
             'median_filter': {
@@ -353,6 +396,12 @@ class raman_preprocessing_window(QMainWindow):
             'IModPoly': {
                 'n_iter': float(self.ModPoly_niter_lineedit.text()),
                 'poly_order': int(self.ModPoly_polyorder_lineedit.text())},
+            'PPF': {
+                'n_iter': int(self.PPF_niter_lineedit.text()),
+                'poly_orders': literal_eval(self.PPF_polyorders_lineedit.text()),
+                'segment_borders': literal_eval(self.PPF_segment_borders_lineedit.text()),
+                'fit_method': self.PPF_fit_method_lineedit.text()},
+            'convex_hull': {},
             'sav_gol':{
                 'deriv':int(self.derivative_order_combo.currentText()),
                 'savgol_points':int(self.savgol_points_combo.currentText())},
@@ -376,7 +425,7 @@ class raman_preprocessing_window(QMainWindow):
 
         for edit_arg in edit_mods:
             if edit_arg in ['SNIP', 'ALSS', 'iALSS', 'drPLS', 'ModPoly',
-                            'IModPoly']:
+                            'IModPoly', 'PPF', 'convex_hull']:
                 self.raman_data.baseline_correction(
                     mode=edit_arg, **self.edit_args_dict[edit_arg])
             elif edit_arg == 'sav_gol':

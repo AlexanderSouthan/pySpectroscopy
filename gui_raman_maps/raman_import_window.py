@@ -16,9 +16,9 @@ from pyAnalytics.spectroscopy_data import spectroscopy_data
 
 class raman_import_window(QMainWindow):
 
-    def __init__(self, parent):
+    def __init__(self, data_container):
         super().__init__()
-        self.parent = parent
+        self.data_container = data_container
         self.init_window()
         self.define_widgets()
         self.position_widgets()
@@ -120,28 +120,20 @@ class raman_import_window(QMainWindow):
             raise ValueError('Unknown import type.')
 
         import_dataset_name = self.import_dataset_name_lineedit.text()
-        # self.parent.raman_datasets[import_dataset_name] = []
-        self.parent.raman_file_names[import_dataset_name] = (
-            self.import_data_textedit.toPlainText().split('\n'))
+        import_file_names = self.import_data_textedit.toPlainText().split('\n')
 
         if selected_data_format in ['independent spectra']:
-            self.parent.raman_datasets[import_dataset_name] = spectroscopy_data(
+            self.data_container[import_dataset_name] = spectroscopy_data(
                 data_source=data_source,
-                file_names=self.parent.raman_file_names[import_dataset_name])
+                file_names=import_file_names)
         elif selected_data_format in ['z-scan', 'volume scan', 'x-scan',
                                       'y-scan']:
-            self.parent.raman_datasets[import_dataset_name] = raman_image(
+            self.data_container[import_dataset_name] = raman_image(
                 measurement_type=measurement_type,
-                file_names=self.parent.raman_file_names[import_dataset_name],
+                file_names=import_file_names,
                 file_extension=file_extension, spectral_data=spectral_data,
                 data_source=data_source,
                 decimals_coordinates=decimals_coordinates)
-
-        dataset_names = [
-            self.parent.dataset_selection_combo.itemText(i)
-            for i in range(self.parent.dataset_selection_combo.count())]
-        if import_dataset_name not in dataset_names:
-            self.parent.dataset_selection_combo.addItem(import_dataset_name)
 
     def center(self):  # centers object on screen
         qr = self.frameGeometry()
