@@ -61,6 +61,7 @@ class spectroscopy_data:
         self.reset_processed_data()
         self.wavenumbers = self.spectral_data.columns.to_numpy()
         self.baseline_data = {}
+        self.monochrome_data = {}
 
     def __import_data(self):
         if self.data_source == 'DataFrame':
@@ -379,8 +380,8 @@ class spectroscopy_data:
         modes = ['int_at_point', 'sig_to_base', 'sig_to_axis']
 
         if mode == modes[0]:  # 'int_at_point'
-            if not hasattr(self, 'int_at_point'):
-                self.int_at_point = pd.DataFrame(
+            if not modes[0] in self.monochrome_data:
+                self.monochrome_data[modes[0]] = pd.DataFrame(
                     [], index=active_data.index)
 
             wn = kwargs.get('wn', 1000)
@@ -389,18 +390,19 @@ class spectroscopy_data:
                 :, active_data.columns[
                     np.argmin(np.abs(active_data.columns - wn))]]
 
-            self.int_at_point[wn] = curr_int_at_point
+            self.monochrome_data[modes[0]][wn] = curr_int_at_point
 
-            return self.int_at_point
+            return self.monochrome_data[modes[0]]
 
         elif mode in modes[1:3]:  # 'sig_to_base', 'sig_to_axis'
-            if (not hasattr(self, modes[1])) and (not hasattr(self, modes[2])):
+            if (not modes[1] in self.monochrome_data) and (
+                    not modes[2] in self.monochrome_data):
                 self.spectral_data_integrated = self.integrate_spectra()
-            if (not hasattr(self, modes[1])) and (mode == modes[1]):
-                self.sig_to_base = pd.DataFrame(
+            if (not modes[1] in self.monochrome_data) and (mode == modes[1]):
+                self.monochrome_data[modes[1]]= pd.DataFrame(
                     [], index=active_data.index)
-            elif (not hasattr(self, modes[2])) and (mode == modes[2]):
-                self.sig_to_axis = pd.DataFrame(
+            elif (not modes[2] in self.monochrome_data) and (mode == modes[2]):
+                self.monochrome_data[modes[2]] = pd.DataFrame(
                     [], index=active_data.index)
 
             wn = np.sort(kwargs.get('wn', [1000, 2000]))
@@ -425,11 +427,11 @@ class spectroscopy_data:
                     :, closest_index_lower].values - self.area_under_baseline)
 
             if mode == modes[1]:  # 'sig_to_base'
-                self.sig_to_base[str(wn)] = curr_sig
-                return self.sig_to_base
+                self.monochrome_data[modes[1]][str(wn)] = curr_sig
+                return self.monochrome_data[modes[1]]
             elif mode == modes[2]:  # 'sig_to_axis'
-                self.sig_to_axis[str(wn)] = curr_sig
-                return self.sig_to_axis
+                self.monochrome_data[modes[2]][str(wn)] = curr_sig
+                return self.monochrome_data[modes[2]]
 
     def integrate_spectra(self, active_data=None):
         active_data = self.check_active_data(active_data)
@@ -448,6 +450,7 @@ class spectroscopy_data:
             active_data)
 
         self.pca.perform_pca(pca_components)
+        self.monochrome_data['pca'] = self.pca.pca_scores
 
         return self.pca
 
@@ -465,6 +468,8 @@ class spectroscopy_data:
         self.fitted_spectra = pd.DataFrame(
             np.dot(self.ref_coefs.values, reference_data),
             index=active_data.index, columns=active_data.columns)
+
+        self.monochrome_data['ref_spec_fit'] = self.ref_coefs
 
         return (self.fitted_spectra, self.ref_coefs)
 
