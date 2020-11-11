@@ -8,7 +8,9 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
                              QActionGroup, QMenu, QListWidget, QPushButton,
                              QAbstractItemView, QErrorMessage)
 
+from pyAnalytics.raman_data import raman_image
 from raman_import_window import raman_import_window
+from raman_export_window import raman_export_window
 from raman_visualization_window import raman_visualization_window
 from raman_preprocessing_window import raman_preprocessing_window
 from raman_univariate_analysis_window import raman_univariate_analysis_window
@@ -16,6 +18,7 @@ from raman_pca_window import raman_pca_window
 from pyRegression.pca_viewer import pca_viewer
 from raman_ref_spec_fit_window import raman_ref_spec_fit_window
 from reference_spectra_fit_viewer import reference_spectra_fit_viewer
+from raman_3d_intensity_viewer import raman_3d_intensity_viewer
 # from hplc_calibration_window import hplc_calibration_window
 # from hplc_visualization_window import hplc_visualization_window
 # from pyAnalytics.hplc_prediction import hplc_prediction
@@ -59,6 +62,10 @@ class main_window(QMainWindow):
         save_dataset_action.setStatusTip('Save dataset to file')
         save_dataset_action.triggered.connect(self.save_dataset)
 
+        export_dataset_action = QAction('Export dataset to ASCII', self)
+        export_dataset_action.setStatusTip('Export dataset to ASCII')
+        export_dataset_action.triggered.connect(self.open_export_window)
+
         close_datasets_action = QAction('Unload all datasets', self)
         close_datasets_action.setStatusTip('Unload all datasets')
         close_datasets_action.triggered.connect(self.init_datasets)
@@ -66,6 +73,7 @@ class main_window(QMainWindow):
         file_menu.addAction(import_dataset_action)
         file_menu.addAction(open_dataset_action)
         file_menu.addAction(save_dataset_action)
+        file_menu.addAction(export_dataset_action)
         file_menu.addAction(close_datasets_action)
 
         preprocessing_action = QAction('Spectrum preprocessing', self)
@@ -103,10 +111,17 @@ class main_window(QMainWindow):
             'View reference spectra fit results')
         ref_spec_fit_viewer_action.triggered.connect(
             self.open_ref_spec_fit_viewer)
+        intensity_viewer_action = QAction(
+            '3D intensity distribution', self)
+        intensity_viewer_action.setStatusTip(
+            'View 3D intensity distribution (mapping results only)')
+        intensity_viewer_action.triggered.connect(
+            self.open_3d_data_viewer)
 
         visualize_menu.addAction(spectra_visualization_action)
         visualize_menu.addAction(pca_viewer_action)
         visualize_menu.addAction(ref_spec_fit_viewer_action)
+        visualize_menu.addAction(intensity_viewer_action)
 
         # elugram_viewer_action = QAction('2D elugram viewer', self)
         # elugram_viewer_action.triggered.connect(self.open_elugram_window)
@@ -175,6 +190,17 @@ class main_window(QMainWindow):
     def open_import_window(self):
         self.raman_import_window = raman_import_window(self.raman_datasets)
         self.raman_import_window.show()
+
+    def open_export_window(self):
+        if len(self.raman_datasets) > 0:
+            self.raman_export_window = raman_export_window(
+                self.active_dataset())
+            self.raman_export_window.show()
+        else:
+            error_message = QErrorMessage()
+            error_message.showMessage('No active dataset available to '
+                                      'export!')
+            error_message.exec_()
 
     def open_visulization_window(self):
         if len(self.raman_datasets) > 0:
@@ -255,6 +281,19 @@ class main_window(QMainWindow):
                                       'reference spectra fit first.')
             error_message.exec_()
 
+    def open_3d_data_viewer(self):
+        if (len(self.raman_datasets) > 0) and type(
+                self.active_dataset()) is raman_image:
+            self.intensity_viewer = raman_3d_intensity_viewer(
+                self.active_dataset())
+            self.intensity_viewer.show()
+        else:
+            error_message = QErrorMessage()
+            error_message.showMessage('No dataset available to visualize '
+                                      'or no active dataset is not a raman'
+                                      'map. Perform data analysis first!')
+            error_message.exec_()
+
     def active_dataset(self):
         active_dataset = self.raman_datasets[
             self.dataset_selection_combo.currentText()]
@@ -280,6 +319,16 @@ class main_window(QMainWindow):
             pass
         try:
             self.raman_univariate_analysis_window.update_data(
+                self.active_dataset())
+        except:
+            pass
+        try:
+            self.intensity_viewer.replace_data(
+                self.active_dataset())
+        except:
+            pass
+        try:
+            self.raman_export_window.update_data(
                 self.active_dataset())
         except:
             pass
