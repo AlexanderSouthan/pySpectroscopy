@@ -43,6 +43,7 @@ class raman_image(spectroscopy_data, confocal_data):
         self.reset_processed_data()
         self.wavenumbers = self.spectral_data.columns.to_numpy()
         self.baseline_data = {}
+        self.monochrome_data = {}
 
     ###############################
 #####        basic methods        #############################################
