@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from pyAnalytics.measurement_parameters import measurement_parameters
-# import pyPreprocessing.baseline_correction
+from pyPreprocessing.baseline_correction import generate_baseline
 
 
 class hplc_data():
@@ -87,6 +87,8 @@ class hplc_data():
                              ' \'import\' and \'DataFrame\'.')
 
         self.time_data = self.raw_data.index.to_numpy()
+        self.processed_data = self.raw_data.copy()
+        self.baseline_data = {}
 
     def import_from_file(self, import_path):
         """
@@ -190,6 +192,8 @@ class hplc_data():
             self.closest_index_to_value(
                 active_data.columns, wavelength_limits[1]) + 1
             ]
+
+        self.processed_data = cropped_data
 
         return cropped_data
 
@@ -406,6 +410,84 @@ class hplc_data():
         """
         return np.argmin(np.abs(array - value))
 
+    def baseline_correction(self, elugrams='all', mode='ModPoly',
+                            smoothing=True, transform=False, active_data=None,
+                            **kwargs):
+        """
+        Correct baseline with methods from pyPreprocessing.baseline_correction.
+
+        The details about the function arguments and kwargs can be found in the
+        docstrings in pyPreprocessing.baseline_correction.
+
+        Parameters
+        ----------
+        elugrams : str or float, optional
+            Defines which elugrams are corrected. Default is 'all' meaning all
+            elugrams at all wavelengths will be corrected, consuming the most
+            computing time. Alternatively, a wavelength value can be pssed and
+            only the elugram at that wavelength is corrected.
+        mode : str, optional
+            The baseline correction algorithm. Default is 'ModPoly'.
+        smoothing : bool, optional
+            True means the data are smoothed before baseline correction. The
+            default is True.
+        transform : bool, optional
+            True means the data are transformed before baseline correction.
+            The default is False.
+        active_data : pandas DataFrame or None, optional
+            None means that self.raw_data is used for baseline correction.
+            Alternatively, a pandas DataFrame in the same format as
+            self.raw_data can be passed that is used for the calculations.
+            The default is None.
+        **kwargs
+            All kwargs necessary for the respective baseline correction mode.
+            If x values are needed for the calculations, these do not need
+            to be given because they are already known. If they are passed
+            anyway, the passed values are ignored.
+
+        Returns
+        -------
+        pd.DataFrame
+            The spectral data with the subtracted baseline.
+
+        """
+        active_data = self.check_active_data(active_data)
+
+        if elugrams == 'all':
+            active_data_baseline = active_data
+        else:
+            active_data_baseline = self.extract_elugram(
+                elugrams, active_data=active_data)
+
+        active_data_baseline = active_data_baseline.T
+
+        if mode in ['convex_hull', 'ModPoly', 'IModPoly', 'PPF', 'iALSS']:
+            kwargs['wavenumbers'] = active_data_baseline.columns.to_numpy()
+
+        curr_baseline_data = pd.DataFrame(
+            generate_baseline(active_data_baseline.values, mode,
+                              smoothing=True, transform=False, **kwargs),
+            index=active_data_baseline.index,
+            columns=active_data_baseline.columns)
+
+        if elugrams == 'all':
+            self.baseline_data[mode] = curr_baseline_data.T
+        else:
+            curr_index = self.closest_index_to_value(active_data.columns,
+                                                     elugrams)
+            self.baseline_data[mode] = pd.DataFrame(
+                np.zeros_like(active_data.values), index=active_data.index,
+                columns=active_data.columns)
+            self.baseline_data[mode].iloc[
+                :, curr_index] = np.squeeze(curr_baseline_data)
+
+        corrected_data = (active_data -
+                          self.baseline_data[mode]).round(decimals=6)
+
+        self.processed_data = corrected_data
+
+        return corrected_data
+
     def check_active_data(self, active_data):
         """
         Call to determine if active_data is None.
@@ -427,5 +509,5 @@ class hplc_data():
 
         """
         if active_data is None:
-            active_data = self.raw_data
+            active_data = self.processed_data
         return active_data

@@ -34,7 +34,8 @@ class raman_preprocessing_window(QMainWindow):
     def define_widgets(self):
         self.processing_label = QLabel('<b>Spectrum processing string</b>')
         self.edit_string_textedit = QTextEdit()
-        self.button_process_spectra = QPushButton('Preprocess spectra')
+        self.button_process_spectra = QPushButton('Apply to processed spectra')
+        self.button_reset_processing = QPushButton('Reset processing steps')
 
         self.preprocessing_label = QLabel('<b><h1>Baseline options</h1></b>')
 
@@ -109,9 +110,10 @@ class raman_preprocessing_window(QMainWindow):
         self.reset_button = QPushButton('Reset defaults')
 
     def position_widgets(self):
-        self.processing_layout = QHBoxLayout()
+        self.processing_layout = QVBoxLayout()
         self.processing_layout.addWidget(self.edit_string_textedit)
         self.processing_layout.addWidget(self.button_process_spectra)
+        self.processing_layout.addWidget(self.button_reset_processing)
 
         self.ALSS_selection_layout = QHBoxLayout()
         self.ALSS_selection_layout.addWidget(self.ALSS_lam_label)
@@ -209,6 +211,7 @@ class raman_preprocessing_window(QMainWindow):
 
     def connect_event_handlers(self):
         self.button_process_spectra.clicked.connect(self.process_spectra)
+        self.button_reset_processing.clicked.connect(self.raman_data.reset_processed_data)
 
         self.ALSS_lam_lineedit.editingFinished.connect(
             self.update_processing_parameters)
@@ -421,7 +424,7 @@ class raman_preprocessing_window(QMainWindow):
         edit_string = self.edit_string_textedit.toPlainText()
         edit_mods = edit_string.split(',') if edit_string != '' else []
 
-        self.raman_data.reset_processed_data()
+        # self.raman_data.reset_processed_data()
 
         for edit_arg in edit_mods:
             if edit_arg in ['SNIP', 'ALSS', 'iALSS', 'drPLS', 'ModPoly',
@@ -448,3 +451,4 @@ class raman_preprocessing_window(QMainWindow):
             elif edit_arg == 'total_intensity':
                 self.raman_data.normalize('total_intensity',
                                           **self.edit_args_dict[edit_arg])
+        print('Preprocessing finshed!')

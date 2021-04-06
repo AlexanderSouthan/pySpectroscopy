@@ -319,7 +319,7 @@ if __name__ == "__main__":
     # file = r'Z:\Charakterisierungen und Messungen\Python\zz_not_yet_in_git\04_Zugversuch-Auswertung\62\Mappe1.xlsx'
     # file = r'/home/almami/Alexander/Python_Skripte/yy_Not_yet_in_git/04_Zugversuch-Auswertung/62/62.xls'
 
-    file = r'Z:\Lehre\Studentische Arbeiten\01 Aktuelle Arbeiten\2020_Rebecca Hirsch\Messdaten_Zugversuche.xls'
+    file = r'Z:\Lehre\Studentische Arbeiten\02 Abgeschlossene Arbeiten\2020_Rebecca Hirsch\Messdaten_Zugversuche.xls'
 
     tensile_test = tensile_test(file, 'Marc_Stuhlmueller', unit_strain='%',
                                 unit_stress='MPa')

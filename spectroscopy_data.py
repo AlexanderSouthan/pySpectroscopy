@@ -66,6 +66,7 @@ class spectroscopy_data:
     def __import_data(self):
         if self.data_source == 'DataFrame':
             self.spectral_data = self.kwargs.get('spectral_data')
+            self.spectral_data.columns = self.spectral_data.columns.astype(float)
 
         elif self.data_source == 'import':
             self.file_names = self.kwargs.get('file_names')
@@ -193,8 +194,8 @@ class spectroscopy_data:
         lower_wn = wn_limits[:, 0]
         upper_wn = wn_limits[:, 1]
 
-        lower_wn = lower_wn[np.argsort(-lower_wn)]
-        upper_wn = upper_wn[np.argsort(-upper_wn)]
+        lower_wn = np.sort(lower_wn)
+        upper_wn = np.sort(upper_wn)
 
         closest_index_to_lower_wn = np.argmin(
             np.abs(active_data.columns.values[:, np.newaxis]-lower_wn),
@@ -205,8 +206,8 @@ class spectroscopy_data:
 
         clipping_index = np.concatenate(
             np.array(
-                [np.r_[closest_index_to_upper_wn[ii]:
-                       closest_index_to_lower_wn[ii]+1]
+                [np.r_[closest_index_to_lower_wn[ii]+1:
+                       closest_index_to_upper_wn[ii]]
                  for ii in np.arange(len(closest_index_to_lower_wn))]))
 
         clipped_data = active_data.iloc[:, clipping_index]
@@ -215,23 +216,26 @@ class spectroscopy_data:
 
         return clipped_data
 
-    def clip_samples(self, x_limits=None, y_limits=None, z_limits=None,
-                     active_data=None):
-        # This method is not good for this class. It assumes that the index
-        # contains info only present for Raman images, so it must be improved
-        # to accept all kinds on index values, such as sample names or simply
-        # numbers.
+    def clip_samples(self, mode='coords', active_data=None, **kwargs):
         active_data = self.check_active_data(active_data)
 
-        x_clipping_mask = self.generate_sample_clipping_mask(active_data,
-                                                             x_limits, 0)
-        y_clipping_mask = self.generate_sample_clipping_mask(active_data,
-                                                             y_limits, 1)
-        z_clipping_mask = self.generate_sample_clipping_mask(active_data,
-                                                             z_limits, 2)
+        if mode == 'coords':
+            x_limits = kwargs.get('x_limits', None)
+            y_limits = kwargs.get('y_limits', None)
+            z_limits = kwargs.get('z_limits', None)
 
-        clipped_data = active_data.loc[(x_clipping_mask, y_clipping_mask,
-                                           z_clipping_mask)]
+            x_clipping_mask = self.generate_sample_clipping_mask(active_data,
+                                                                 x_limits, 0)
+            y_clipping_mask = self.generate_sample_clipping_mask(active_data,
+                                                                 y_limits, 1)
+            z_clipping_mask = self.generate_sample_clipping_mask(active_data,
+                                                                 z_limits, 2)
+
+            clipped_data = active_data.loc[(x_clipping_mask, y_clipping_mask,
+                                               z_clipping_mask)]
+        elif mode == 'sample_names':
+            sample_names = kwargs.get('sample_names', active_data.index)
+            clipped_data = active_data.loc[sample_names]
 
         self.spectral_data_processed = clipped_data
 
@@ -256,7 +260,7 @@ class spectroscopy_data:
         assert mode in normalize_modes, 'normalize mode unknown'
 
         if mode == normalize_modes[0]:  # total_intensity
-            normalized_data = pd.DataFrame(-transform.normalize(
+            normalized_data = pd.DataFrame(transform.normalize(
                 active_data.values, mode,
                 x_data=active_data.columns.to_numpy()),
                 index=active_data.index, columns=active_data.columns)
@@ -275,8 +279,8 @@ class spectroscopy_data:
 
         Parameters
         ----------
-        mode : str
-            The baseline correction algorithm.
+        mode : str, optional
+            The baseline correction algorithm. Default is 'ModPoly'.
         smoothing : bool, optional
             True means the spectra are smoothed before baseline correction. The
             default is True.

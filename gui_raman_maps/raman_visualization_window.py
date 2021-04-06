@@ -48,7 +48,7 @@ class raman_visualization_window(QMainWindow):
             x_axis_title = 'wavenumber ' + '$\mathrm{[cm^{-1}]}$')
 
         self.show_spectra_combo = QComboBox()
-        self.show_spectra_combo.addItems(['All spectra', 'Single spectrum'])
+        self.show_spectra_combo.addItems(['Single spectrum', 'All spectra'])
         self.show_baseline_combo = QComboBox()
         self.lower_wn_label = QLabel('Lower wavenumber limit', self.container0)
         self.lower_wn_lineedit = QLineEdit()

@@ -41,7 +41,7 @@ class raman_import_window(QMainWindow):
         self.scan_type_label.setText('Data format')
         self.scan_type_combobox = QComboBox(self.container0)
         self.scan_type_combobox.addItems(
-            ['independent spectra', 'z-scan', 'y-scan', 'x-scan',
+            ['independent spectra', 'z-scan', 'y-scan', 'x-scan', 'xy map',
              'volume scan'])
             # ['independent spectra', 'z-scan', 'y-scan', 'x-scan', 'volume scan',
             #  'Inline-IR', 'LSM'])
@@ -89,7 +89,7 @@ class raman_import_window(QMainWindow):
         selected_data_format = self.scan_type_combobox.currentText()
 
         if selected_data_format in ['z-scan', 'volume scan', 'x-scan',
-                                    'y-scan', 'independent spectra']:
+                                    'y-scan', 'xy map', 'independent spectra']:
             data_source = 'import'
             spectral_data = None
             file_extension = 'txt'
@@ -102,6 +102,8 @@ class raman_import_window(QMainWindow):
                 measurement_type = 'Raman_x_scan'
             elif self.scan_type_combobox.currentText() == 'y-scan':
                 measurement_type = 'Raman_y_scan'
+            elif self.scan_type_combobox.currentText() == 'xy map':
+                measurement_type = 'Raman_xy_scan'
             elif self.scan_type_combobox.currentText() == 'single spectrum':
                 measurement_type = 'Raman_single_spectrum'
         # elif selected_data_format == 'Inline-IR':
@@ -127,7 +129,7 @@ class raman_import_window(QMainWindow):
                 data_source=data_source,
                 file_names=import_file_names)
         elif selected_data_format in ['z-scan', 'volume scan', 'x-scan',
-                                      'y-scan']:
+                                      'y-scan', 'xy map']:
             self.data_container[import_dataset_name] = raman_image(
                 measurement_type=measurement_type,
                 file_names=import_file_names,

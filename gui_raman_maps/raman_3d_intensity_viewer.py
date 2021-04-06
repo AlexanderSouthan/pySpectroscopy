@@ -109,7 +109,7 @@ class raman_3d_intensity_viewer(QMainWindow):
 
         self.update_column_combo()
 
-        # self.select_column_combo.currentIndexChanged.connect(self.plot_images)
+        self.select_column_combo.currentIndexChanged.connect(self.plot_images)
 
     def update_column_combo(self):
         curr_data = self.select_data_combo.currentText()

@@ -48,8 +48,11 @@ class lsm_data:
     def import_data(self):
         self.file_list = glob.glob(self.directory + '*.' + self.file_extension)
         
-        image_data = skimage.io.imread_collection(self.file_list)
-        
+        image_data = []
+        for curr_file in self.file_list:
+            image_data.append(imageio.imread(curr_file))
+        # image_data = skimage.io.imread_collection(self.file_list)
+
         self.intensities_multichrome = np.zeros((len(self.file_list),np.shape(image_data[0])[0],np.shape(image_data[0])[1],np.shape(image_data[0])[2]),dtype='uint8')
         for ii,current_image in enumerate(tqdm(image_data)):
             self.intensities_multichrome[ii] = current_image   

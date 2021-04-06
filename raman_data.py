@@ -40,6 +40,9 @@ class raman_image(spectroscopy_data, confocal_data):
                 (index_frame*self.coord_conversion_factor).astype(np.int64))
             self.spectral_data.index = new_index
 
+        if self.spectral_data.columns[1] < self.spectral_data.columns[0]:
+            self.spectral_data = self.spectral_data.iloc[:, ::-1]
+
         self.reset_processed_data()
         self.wavenumbers = self.spectral_data.columns.to_numpy()
         self.baseline_data = {}
@@ -62,8 +65,9 @@ class raman_image(spectroscopy_data, confocal_data):
 
         if self.measurement_type in ['Raman_volume', 'Raman_x_scan',
                                      'Raman_y_scan', 'Raman_z_scan',
-                                     'Raman_single_spectrum']:
-            if self.measurement_type in ['Raman_volume', 'Raman_x_scan']:
+                                     'Raman_xy_scan', 'Raman_single_spectrum']:
+            if self.measurement_type in ['Raman_volume', 'Raman_x_scan',
+                                         'Raman_xy_scan']:
                 self.file_list.iloc[:, 1] = (
                     pd.to_numeric(
                         self.file_list.iloc[:, 0].str.extract(
@@ -73,6 +77,11 @@ class raman_image(spectroscopy_data, confocal_data):
                 self.file_list.iloc[:, 2] = (
                     pd.to_numeric(self.file_list.iloc[:, 0].str.extract(
                         r'__Y_([-*\d*.*\d*]*)\__Z_', expand=False)) *
+                    self.coord_conversion_factor).astype(int)
+            if self.measurement_type in ['Raman_xy_scan']:
+                self.file_list.iloc[:, 2] = (
+                    pd.to_numeric(self.file_list.iloc[:, 0].str.extract(
+                        r'__Y_([-*\d*.*\d*]*)\__', expand=False)) *
                     self.coord_conversion_factor).astype(int)
             if self.measurement_type in ['Raman_volume', 'Raman_z_scan']:
                 self.file_list.iloc[:, 3] = (
