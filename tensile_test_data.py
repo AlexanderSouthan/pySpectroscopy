@@ -18,11 +18,12 @@ from copy import deepcopy
 
 class tensile_test():
     def __init__(self, import_file, import_mode, unit_strain='%',
-                 unit_stress='kPa'):
+                 unit_stress='kPa', **kwargs):
         
         # strain units can be '%' or '' 
         self.unit_strain = unit_strain
         self.unit_stress = unit_stress
+        self.preload = kwargs.get('preload', None)
         
         if self.unit_strain == '':
             self.strain_conversion_factor = 1
@@ -86,11 +87,23 @@ class tensile_test():
             #    print('Error while file import in line ' +
             #          str(sys.exc_info()[2].tb_lineno) + ': ', e)
 
+        elif self.import_mode == 'Lena_Schunter':
+            # Read excel file
+            raw_excel = pd.ExcelFile(self.import_file)
+            # Save sheets starting with the second into list
+            self.raw_original = []
+            self.results['name'] = raw_excel.sheet_names[2:]
+            for sheet_name in raw_excel.sheet_names[2:]:
+                self.raw_original.append(
+                        raw_excel.parse(sheet_name, header=2,
+                                        names=['tool_distance', 'strain', 'stress'],
+                                        usecols=[0, 1, 2]))
+
         else:
             raise ValueError('No valid import mode entered.')
 
     def calc_e_modulus(self, r_squared_lower_limit=0.995, lower_strain_limit=0,
-                  upper_strain_limit=50, smoothing=True, **kwargs):
+                       upper_strain_limit=50, smoothing=True, **kwargs):
 
         e_modulus = []
         slope_limit = []
@@ -107,7 +120,7 @@ class tensile_test():
                 sample = self.smooth_data(sample, sav_gol_window,
                                           sav_gol_polyorder,
                                           data_points=kwargs.get(
-                                                  'data_points', None))
+                                              'data_points', None))
             self.raw_processed.append(sample)
 
         self.raw_processed_cropped = []
@@ -289,7 +302,13 @@ class tensile_test():
     def streamline_data(self, sample):
         sample.drop_duplicates('strain', keep='first', inplace=True)
         sample.sort_values(by=['strain'], inplace=True)
-        sample.dropna(inplace=True)
+        if self.preload is not None:
+            sample.where(sample['stress'] >= self.preload, inplace=True)
+            sample.dropna(inplace=True)
+            h_0 = sample['tool_distance'].iloc[0]
+            sample['strain'] = (h_0-sample['tool_distance'])/h_0 * self.strain_conversion_factor
+        else:
+            sample.dropna(inplace=True)
 
         return sample
 
