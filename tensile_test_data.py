@@ -15,6 +15,8 @@ import os
 from tqdm import tqdm
 from copy import deepcopy
 
+from little_helpers.num_derive import derivative
+
 
 class tensile_test():
     def __init__(self, import_file, import_mode, unit_strain='%',
@@ -307,6 +309,8 @@ class tensile_test():
             sample.dropna(inplace=True)
             h_0 = sample['tool_distance'].iloc[0]
             sample['strain'] = (h_0-sample['tool_distance'])/h_0 * self.strain_conversion_factor
+            sample['deriv'] = derivative(sample['strain'].values,
+                                         sample[['stress']].values.T).T
         else:
             sample.dropna(inplace=True)
 
