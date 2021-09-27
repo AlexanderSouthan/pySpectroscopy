@@ -161,6 +161,85 @@ class tensile_test():
         else:
             raise ValueError('No valid import mode entered.')
 
+    def streamline_data(self, sample):
+        """
+        Streamline a dataset to make it fit for further analysis.
+        
+        Typical problems with real datasets are duplicate values, unsorted
+        strain values (especially at the test start) and NaN values due to
+        missing values in the source file. Additionally, the data is cropped
+        if wanted based on certain criteria (currently only defined by
+        self.preload).
+
+        Parameters
+        ----------
+        sample : DataFrame
+            A dataset containing the stress-strain data of a single sample.
+
+        Returns
+        -------
+        sample : DataFrame
+            The streamlined dataset.
+
+        """
+        sample.drop_duplicates('strain', keep='first', inplace=True)
+        sample.sort_values(by=['strain'], inplace=True)
+        if self.preload is not None:
+            sample.where(sample['stress'] >= self.preload, inplace=True)
+            sample.dropna(inplace=True)
+            h_0 = sample['tool_distance'].iloc[0]
+            sample['strain'] = (h_0-sample['tool_distance'])/h_0 * self.strain_conversion_factor
+            sample['deriv'] = derivative(sample['strain'].values,
+                                         sample[['stress']].values.T).T
+        else:
+            sample.dropna(inplace=True)
+
+        return sample
+
+    def smooth_data(self, sample, window, poly_order, data_points=None):
+        """
+        Smoothes a dataset to allow a cleaner analysis of the slopes.
+
+        Parameters
+        ----------
+        sample : DataFrame
+            A dataset containing the stress-strain data of a single sample.
+        window : int, optional
+            The number of datapoints used around a specific datapoint for the
+            Savitzky Golay method. Default is 500.
+        polyorder : int, optional
+            The polynomial order used for the Savitzky Golay method. Default is
+            2.
+        data_points : int. optional
+            The number of datapoints used for interpolation of the dataset to
+            an evenly spaced dataset. This is a prerequisite for the Savitzky
+            Golay method and is therefore always done here.Default is one order
+            of magnitude more than datapoints in the dataset.
+
+        Returns
+        -------
+        sample : TYPE
+            DESCRIPTION.
+
+        """
+        smoothed_sample = sample.loc[:, 'stress'].values
+        x_coordinate = sample.loc[:, 'strain'].values
+        
+        if data_points is None:
+            data_points = int(10**np.ceil(np.log10(len(x_coordinate))))
+
+        strain_interpolated, smoothed_sample = smoothing(
+            smoothed_sample[np.newaxis], 'sav_gol', interpolate=True,
+            point_mirror=True, x_coordinate=x_coordinate,
+            savgol_points=window, poly_order=poly_order,
+            data_points=data_points)
+
+        sample = pd.DataFrame(
+                list(zip(strain_interpolated, np.squeeze(smoothed_sample.T))),
+                columns=['strain', 'stress'])
+
+        return sample
+
     def calc_e_modulus(self, r_squared_lower_limit=0.995, lower_strain_limit=0,
                        upper_strain_limit=50, smoothing=True, **kwargs):
         """
@@ -265,6 +344,18 @@ class tensile_test():
         return self.results
 
     def calc_strength(self):
+        """
+        Calculate the sample strengths.
+
+        Calculation is done simply by selecting the maximum stress observed in
+        the datasets.
+
+        Returns
+        -------
+        list
+            A list containing the calculation results.
+
+        """
         self.strength = []
         for sample in self.raw:
             self.strength.append(
@@ -274,6 +365,17 @@ class tensile_test():
         return self.strength
 
     def calc_toughness(self):
+        """
+        Calculate the sample toughnesses.
+
+        Calculation is done by integrating over the stress-strain curves.
+
+        Returns
+        -------
+        list
+            A list containing the calculation results.
+
+        """
         self.toughness = []
         for sample in self.raw:
             self.toughness.append(
@@ -284,6 +386,18 @@ class tensile_test():
         return self.toughness
 
     def calc_elongation_at_break(self):
+        """
+        Calculate the elongation at break of the samples.
+
+        Calculation is done simply by selecting the maximum strain observed in
+        the datasets.
+
+        Returns
+        -------
+        list
+            A list containing the calculation results.
+
+        """
         self.elongation_at_break = []
         for sample in self.raw:
             self.elongation_at_break.append(
@@ -403,40 +517,6 @@ class tensile_test():
             plt.savefig(export_path + 'Plots/' + export_name + '.png', dpi=500)
             #plt.clf()
             plt.close()
-
-    def streamline_data(self, sample):
-        sample.drop_duplicates('strain', keep='first', inplace=True)
-        sample.sort_values(by=['strain'], inplace=True)
-        if self.preload is not None:
-            sample.where(sample['stress'] >= self.preload, inplace=True)
-            sample.dropna(inplace=True)
-            h_0 = sample['tool_distance'].iloc[0]
-            sample['strain'] = (h_0-sample['tool_distance'])/h_0 * self.strain_conversion_factor
-            sample['deriv'] = derivative(sample['strain'].values,
-                                         sample[['stress']].values.T).T
-        else:
-            sample.dropna(inplace=True)
-
-        return sample
-
-    def smooth_data(self, sample, window, poly_order, data_points=None):
-        smoothed_sample = sample.loc[:, 'stress'].values
-        x_coordinate = sample.loc[:, 'strain'].values
-        
-        if data_points is None:
-            data_points = int(10**np.ceil(np.log10(len(x_coordinate))))
-
-        strain_interpolated, smoothed_sample = smoothing(
-            smoothed_sample[np.newaxis], 'sav_gol', interpolate=True,
-            point_mirror=True, x_coordinate=x_coordinate,
-            savgol_points=window, poly_order=poly_order,
-            data_points=data_points)
-
-        sample = pd.DataFrame(
-                list(zip(strain_interpolated, np.squeeze(smoothed_sample.T))),
-                columns=['strain', 'stress'])
-
-        return sample
 
 
 if __name__ == "__main__":
