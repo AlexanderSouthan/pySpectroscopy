@@ -7,33 +7,76 @@ Created on Tue Mar 10 17:31:29 2020
 
 import numpy as np
 import pandas as pd
-from pyRegression.linear_regression import lin_reg_all_sections
-from pyPreprocessing.smoothing import smoothing
 import matplotlib.pyplot as plt
 import sys
 import os
 from tqdm import tqdm
 from copy import deepcopy
 
+from pyRegression.linear_regression import lin_reg_all_sections
+from pyPreprocessing.smoothing import smoothing
 from little_helpers.num_derive import derivative
 
 
 class tensile_test():
     def __init__(self, import_file, import_mode, unit_strain='%',
                  unit_stress='kPa', **kwargs):
+        """
+        Initialize data container for tensile test data.
         
+        Original raw data are stored in self.raw_original. The data is then
+        streamlined and stored in self.raw.
+
+        Parameters
+        ----------
+        import_file : string
+            The file path of the file that contains the tensile test data. The
+            data will be imported to self.raw_original. The file will usually
+            be an Excel file, but could also be an ASCII file. The
+            corresponding import filters have to be defined in
+            self.import_data.
+        import_mode : string
+            Selects the import filter used when importing the data. Currently
+            allowed values are 'Marc_Stuhlmüller', 'Philipp Manglkammer' and
+            'Lena_Schunter'.
+        unit_strain : string, optional
+            The unit of the strain values in the dataset. Allowed values are
+            '', meaning that it is dimensionless, and '%', meaning that the
+            strain is given in %. The default is '%'.
+        unit_stress : string, optional
+            The unit of the stress values in the dataset. The default is 'kPa'.
+        **kwargs : 
+            preload : float
+                If given, all stress values smaller than preload will be
+                dropped from the dataset. The corresponding tool distance will
+                be defined as zero strain and the strain values are
+                recalculated accordingly. Thus, it only works when a column
+                exists within the dataset that contains the tool distance
+                during the tensile test.
+
+        Raises
+        ------
+        ValueError
+            If no valid unit_strain is given.
+
+        Returns
+        -------
+        None.
+
+        """
+
         # strain units can be '%' or '' 
         self.unit_strain = unit_strain
         self.unit_stress = unit_stress
         self.preload = kwargs.get('preload', None)
-        
+
         if self.unit_strain == '':
             self.strain_conversion_factor = 1
         elif self.unit_strain == '%':
             self.strain_conversion_factor = 100
         else:
             raise ValueError('No valid unit_strain. Allowed values are \'%\' or \'\'.')
-        
+
         self.e_modulus_title = 'e_modulus [' + self.unit_stress + ']'
         self.linear_limit_title = 'linear_limit [' + self.unit_strain + ']'
         self.strength_title = 'strength [' + self.unit_stress + ']'
@@ -41,7 +84,7 @@ class tensile_test():
         self.elongation_at_break_title = 'elongation_at_break [' + self.unit_strain + ']'
         self.slope_limit_title = 'slope_limit [' + self.unit_stress + '/' + self.unit_strain + ']'
         self.intercept_limit_title = 'intercept_limit [' + self.unit_stress + ']'
-        
+
         self.results = pd.DataFrame([], columns=[
                 'name', self.e_modulus_title, self.linear_limit_title,
                 self.strength_title, self.toughness_title,
@@ -57,6 +100,19 @@ class tensile_test():
             sample = self.streamline_data(sample)
 
     def import_data(self):
+        """
+        Import the data from the external sources into self.raw_original.
+
+        Multiple datasets may be present in the source file given.
+        self.raw_original is a list of DataFrames. Each dataframe contains the
+        data of one tensile test. If only one dataset is present, it is a list
+        containing only one DataFrame.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.import_mode == 'Marc_Stuhlmueller':
             try:
                 # Read excel file
@@ -98,7 +154,8 @@ class tensile_test():
             for sheet_name in raw_excel.sheet_names[2:]:
                 self.raw_original.append(
                         raw_excel.parse(sheet_name, header=2,
-                                        names=['tool_distance', 'strain', 'stress'],
+                                        names=['tool_distance', 'strain',
+                                               'stress'],
                                         usecols=[0, 1, 2]))
 
         else:
@@ -106,6 +163,52 @@ class tensile_test():
 
     def calc_e_modulus(self, r_squared_lower_limit=0.995, lower_strain_limit=0,
                        upper_strain_limit=50, smoothing=True, **kwargs):
+        """
+        Calculate the E modulus from the tensile test data.
+
+        The fitting algorithm works in such a way that it starts a linear
+        regression with the first two datapoints from which the slope and the
+        coefficient of determination (R^2) is obtained. This procedure is
+        repeated, adding one datapoint for each iteration, until
+        upper_strain_limit is reached. The E modulus is then determined by the
+        point where R^2 is still greater than r_squared_lower_limit.
+
+        Parameters
+        ----------
+        r_squared_lower_limit : float, optional
+            The R^2 limit. Defines the value of R^2 that is still acceptable
+            for the fit to be considered linear. The default is 0.995.
+        lower_strain_limit : float, optional
+            The lower strain limit used for the fit. The default is 0.
+        upper_strain_limit : float, optional
+            The upper strain limit used for the fit. It might make sense to
+            give a reasonably low limit if computation speed is important. The
+            number of linear fit that have to be performed for each dataset is
+            equal to the number of datapoints between lower_strain_limit and
+            upper_strain_limit. The default is 50.
+        smoothing : boolean, optional
+            Defines if the dataset is smoothed before the calculations. Usually
+            this is necessary. Smoothing is controlled by kwargs explained
+            below, a Savitzky Golay method is used. The default is True. 
+        **kwargs : 
+            sav_gol_window : int, optional
+                The number of datapoints used around a specific datapoint for
+                the Savitzky Golay method. Default is 500.
+            sav_gol_polyorder : int, optional
+                The polynomial order used for the Savitzky Golay method.
+                Default is 2.
+            data_points : int. optional
+                The number of datapoints used for interpolation of the dataset
+                to an evenly spaced dataset. This is a prerequisite for the
+                Savitzky Golay method and is therefore always done here.Default
+                is one order of magnitude more than datapoints in the dataset.
+
+        Returns
+        -------
+        DataFrame
+            The current results DataFrame.
+
+        """
 
         e_modulus = []
         slope_limit = []
