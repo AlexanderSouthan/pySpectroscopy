@@ -23,8 +23,7 @@ from little_helpers.num_derive import derivative
 
 class tensile_test():
     def __init__(self, import_file, import_mode, unit_strain='%',
-                 unit_stress='kPa', offset_correction=False,
-                 onset_mode=None, data_end_mode=None, deriv_window=5,
+                 unit_stress='kPa', offset_correction=False, deriv_window=5,
                  **kwargs):
         """
         Initialize data container for tensile test data.
@@ -53,24 +52,10 @@ class tensile_test():
         offset_correction : bool, optional
             If True, the strain data is shifter by the offset correction
             method given by the corresponding kwarg. Default is False.
-        onset_mode : string or None, optional
-            Gives the method used to determine the onset of stress increase.
-            Allowed values are 'stress_thresh' (onset at first datapoint above
-            a given threshold), 'deriv_2_max' (onset at the maximum of the
-            second derivative, i.e. place of maximum curvature), 'fit' (onset
-            is determined from a regression) and None (no onset detection).
-            The corresponding parameters are given by kwargs (see below).
-            Default is None.
-        data_end_mode : string or None, optional
-            Gives the mthod to determine the end of the measurement, usually
-            material failure. Allowed values are 'lower_thresh' (end of 
-            measurement is identified by a large negative spike in the
-            derivative) and None (no data end treatment). The corresponding
-            methods are configured using kwargs (see below). Default is None.
         deriv_window : int, optional
             The window used for averaging passed to the derivative function.
             Default is 5.
-        **kwargs : 
+        **kwargs :
             offset_strain : list of float, optional
                 A list containing two elements, the first smaller or equal to
                 the second. They define the range of the strain data that is
@@ -79,41 +64,6 @@ class tensile_test():
                 values at the strain values within the interval. If both values
                 are equal, only one value is used for offset determination. The
                 default is the first value of the measurement.
-            onset_strain_range : list of float, optional
-                A list containing two floats defining the strain range where
-                the onset is looked for. Default is the entire range of a test,
-                so e.g. [0, 100] with unit_strain='%'.
-            end_strain_range : list of float, optional
-                A list containing two floats defining the strain range where
-                the end of data is looked for. Default is the entire range of
-                a compression test, so e.g. [0, 100] with unit_strain='%'.
-            if onset_mode == 'stress_thresh':
-                stress_thresh : float, optional
-                    The stress theshold given in the unit of the stress used in
-                    the dataset. All stress values smaller than stress_thresh
-                    will be dropped from the dataset. The corresponding tool
-                    distance will be defined as zero strain and the strain
-                    values are recalculated accordingly. Thus, it only works
-                    when a column exists within the dataset that contains the
-                    tool distance during the tensile test. Default is 1.
-            if onset_mode == 'fit':
-                fit_function : string
-                    The fit function used, must work with imported
-                    nonlinear_regression function.
-                fit_boundaries : list of tuples
-                    The boundaries used for the fit. Must be a list of tuples,
-                    each containing an upper and a lower limit for the fit
-                    parameters. The order is given by the corresponding
-                    imported function calc_function.
-                fit_scale_factor : float, optional
-                    A factor by which the data to be fitted is divided before
-                    the fit. A higher value might result in a more stable/
-                    reliable fitting process. Make sure to adapt the
-                    fit_boundaries accordingly. Default is 1.
-            if data_end_mode == 'lower_thresh':
-                lower_thresh : float
-                    the threshold level of the derivative at which the sample
-                    is assumed to have failed.
 
         Raises
         ------
@@ -129,10 +79,8 @@ class tensile_test():
         self.unit_strain = unit_strain
         self.unit_stress = unit_stress
         self.offset_correction = offset_correction
-        self.onset_mode = onset_mode
         self.deriv_window = deriv_window
         self.onsets = []
-        self.data_end_mode = data_end_mode
         self.data_ends = []
 
         if self.offset_correction:
@@ -144,30 +92,6 @@ class tensile_test():
             self.strain_conversion_factor = 100
         else:
             raise ValueError('No valid unit_strain. Allowed values are \'%\' or \'\'.')
-
-        if self.onset_mode is not None:
-            self.onset_strain_range = kwargs.get(
-                'onset_strain_range', [0, self.strain_conversion_factor])
-            if self.onset_mode == 'stress_thresh':
-                self.stress_thresh = kwargs.get('stress_thresh', 1)
-            elif self.onset_mode == 'deriv_2_max':
-                pass
-            elif self.onset_mode == 'fit':
-                self.fit_function = kwargs.get('fit_function')
-                self.fit_boundaries = kwargs.get('fit_boundaries')
-                self.fit_scale_factor = kwargs.get('fit_scale_factor', 1)
-                self.fit_params = []
-                self.onset_fits = []
-            else:
-                raise ValueError('No valid onset_mode given.')
-
-        if self.data_end_mode is not None:
-            self.end_strain_range = kwargs.get(
-                'end_strain_range', [0, self.strain_conversion_factor])
-            if self.data_end_mode == 'lower_thresh':
-                self.lower_thresh = kwargs.get('lower_thresh', 500)
-            else:
-                raise ValueError('No valid data_end_mode given.')
 
         self.e_modulus_title = 'e_modulus [' + self.unit_stress + ']'
         self.linear_limit_title = 'linear_limit [' + self.unit_strain + ']'
@@ -193,8 +117,8 @@ class tensile_test():
             sample = self.append_derivative(sample, up_to_order=2)
 
         self.data_processed = deepcopy(self.data_revised)
-        for sample in self.data_processed:
-            sample = self.find_data_borders(sample)
+        # for sample in self.data_processed:
+        #     sample = self.find_data_borders(sample)
 
     def import_data(self):
         """
@@ -332,7 +256,7 @@ class tensile_test():
 
         return sample
 
-    def find_data_borders(self, sample):
+    def find_data_borders(self, onset_mode=None, data_end_mode=None, **kwargs):
         """
         Find the onset and end of measurement in test data.
 
@@ -351,91 +275,163 @@ class tensile_test():
 
         Parameters
         ----------
-        sample : DataFrame
-            A dataset containing the stress-strain data of a single sample.
+        onset_mode : string or None, optional
+            Gives the method used to determine the onset of stress increase.
+            Allowed values are 'stress_thresh' (onset at first datapoint above
+            a given threshold), 'deriv_2_max' (onset at the maximum of the
+            second derivative, i.e. place of maximum curvature), 'fit' (onset
+            is determined from a regression) and None (no onset detection).
+            The corresponding parameters are given by kwargs (see below).
+            Default is None.
+        data_end_mode : string or None, optional
+            Gives the mthod to determine the end of the measurement, usually
+            material failure. Allowed values are 'lower_thresh' (end of 
+            measurement is identified by a large negative spike in the
+            derivative) and None (no data end treatment). The corresponding
+            methods are configured using kwargs (see below). Default is None.
+        **kwargs :
+            onset_strain_range : list of float, optional
+                A list containing two floats defining the strain range where
+                the onset is looked for. Default is the entire range of a test,
+                so e.g. [0, 100] with unit_strain='%'.
+            end_strain_range : list of float, optional
+                A list containing two floats defining the strain range where
+                the end of data is looked for. Default is the entire range of
+                a compression test, so e.g. [0, 100] with unit_strain='%'.
+            if onset_mode == 'stress_thresh':
+                stress_thresh : float, optional
+                    The stress theshold given in the unit of the stress used in
+                    the dataset. All stress values smaller than stress_thresh
+                    will be dropped from the dataset. The corresponding tool
+                    distance will be defined as zero strain and the strain
+                    values are recalculated accordingly. Thus, it only works
+                    when a column exists within the dataset that contains the
+                    tool distance during the tensile test. Default is 1.
+            if onset_mode == 'fit':
+                fit_function : string
+                    The fit function used, must work with imported
+                    nonlinear_regression function.
+                fit_boundaries : list of tuples
+                    The boundaries used for the fit. Must be a list of tuples,
+                    each containing an upper and a lower limit for the fit
+                    parameters. The order is given by the corresponding
+                    imported function calc_function.
+                fit_scale_factor : float, optional
+                    A factor by which the data to be fitted is divided before
+                    the fit. A higher value might result in a more stable/
+                    reliable fitting process. Make sure to adapt the
+                    fit_boundaries accordingly. Default is 1.
+            if data_end_mode == 'lower_thresh':
+                lower_thresh : float
+                    the threshold level of the derivative at which the sample
+                    is assumed to have failed.
 
         Returns
         -------
-        sample : DataFrame
-            The cropped datasetif either the onset or the end of data was
-            determined. Otherwise the original dataset.
+        None.
 
         """
-        # onset identification
+        self.onset_mode = onset_mode
+        self.data_end_mode = data_end_mode
+
         if self.onset_mode is not None:
-            # select only the data between the corresponding onset strain
-            # borders
-            data_mask = sample['strain'].between(*self.onset_strain_range)
-
+            self.onset_strain_range = kwargs.get(
+                'onset_strain_range', [0, self.strain_conversion_factor])
             if self.onset_mode == 'stress_thresh':
-                data_mask *= sample['stress'] >= self.stress_thresh
-                onset_idx = data_mask.idxmax()
-
+                self.stress_thresh = kwargs.get('stress_thresh', 1)
             elif self.onset_mode == 'deriv_2_max':
-                onset_idx = sample.loc[data_mask, 'deriv_2'].idxmax()
-
+                pass
             elif self.onset_mode == 'fit':
-                x_for_fit = sample.loc[data_mask,'strain'].values
-                y_for_fit = (sample.loc[data_mask,'deriv_1'].values/
-                             self.fit_scale_factor)
-                self.fit_params.append(nonlinear_regression(
-                    x_for_fit, y_for_fit, self.fit_function,
-                    boundaries=self.fit_boundaries, max_iter=1000).x)  # sigma, x_offset, slope, amp
-                self.onset_fits.append(pd.DataFrame(np.array([
-                    x_for_fit, calc_function(
-                        x_for_fit, self.fit_params[-1], self.fit_function
-                        )*self.fit_scale_factor]).T,
-                    columns=['x_fit', 'y_fit']))
+                self.fit_function = kwargs.get('fit_function')
+                self.fit_boundaries = kwargs.get('fit_boundaries')
+                self.fit_scale_factor = kwargs.get('fit_scale_factor', 1)
+                self.fit_params = []
+                self.onset_fits = []
+            else:
+                raise ValueError('No valid onset_mode given.')
 
-                # onset is defined as x_offset + sigma. This only makes sense
-                # when self.fit_function is 'cum_dist_normal_with_rise'. For
-                # other cases, the next calculation must be adapted.
-                curr_onset = self.fit_params[-1][1] + self.fit_params[-1][0]
-
-                onset_idx = sample['strain'].index[closest_index(
-                    curr_onset, sample['strain'].values)].values[0]
-        else:
-            onset_idx = sample.index[0]
-
-        # data end/sample failure identification
         if self.data_end_mode is not None:
-            # prevent that the found end of data is at a smaller strain than
-            # the onset
-            if sample.at[onset_idx, 'strain'] > self.end_strain_range[0]:
-                self.end_strain_range[0] = sample.at[onset_idx, 'strain']
-
-            data_mask = sample['strain'].between(*self.end_strain_range)
+            self.end_strain_range = kwargs.get(
+                'end_strain_range', [0, self.strain_conversion_factor])
             if self.data_end_mode == 'lower_thresh':
-                data_mask *= sample['deriv_1'] < self.lower_thresh
-                if any(data_mask):
-                    end_idx = data_mask.idxmax()
-                else:
-                    warnings.warn('No end of data found. Possibly the '
-                                  'threshold used is not good. Using the last '
-                                  'data point instead.')
-                    end_idx = sample.index[-1]
-        else:
-            end_idx = sample.index[-1]
+                self.lower_thresh = kwargs.get('lower_thresh', 500)
+            else:
+                raise ValueError('No valid data_end_mode given.')
 
-        # store identified data borders in corresponding lists
-        self.onsets.append(sample.at[onset_idx, 'strain'])
-        self.data_ends.append(sample.at[end_idx, 'strain'])
+        for sample in self.data_processed:
+            # onset identification
+            if self.onset_mode is not None:
+                # select only the data between the corresponding onset strain
+                # borders
+                data_mask = sample['strain'].between(*self.onset_strain_range)
 
-        # get the tool distance at the onset
-        h_0 = sample.at[onset_idx, 'tool_distance']
+                if self.onset_mode == 'stress_thresh':
+                    data_mask *= sample['stress'] >= self.stress_thresh
+                    onset_idx = data_mask.idxmax()
 
-        # crop dataset according to the identified data borders
-        onset_loc = sample.index.get_loc(onset_idx)
-        sample.drop(sample.index[:onset_loc], inplace=True)
-        end_loc = sample.index.get_loc(end_idx)
-        sample.drop(sample.index[end_loc:], inplace=True)
+                elif self.onset_mode == 'deriv_2_max':
+                    onset_idx = sample.loc[data_mask, 'deriv_2'].idxmax()
 
-        # recalculate the strain and the derivatives
-        sample['strain'] = ((h_0-sample['tool_distance'])/h_0 *
-                            self.strain_conversion_factor)
-        sample = self.append_derivative(sample, up_to_order=2)
+                elif self.onset_mode == 'fit':
+                    x_for_fit = sample.loc[data_mask,'strain'].values
+                    y_for_fit = (sample.loc[data_mask,'deriv_1'].values/
+                                 self.fit_scale_factor)
+                    self.fit_params.append(nonlinear_regression(
+                        x_for_fit, y_for_fit, self.fit_function,
+                        boundaries=self.fit_boundaries, max_iter=1000).x)  # sigma, x_offset, slope, amp
+                    self.onset_fits.append(pd.DataFrame(np.array([
+                        x_for_fit, calc_function(
+                            x_for_fit, self.fit_params[-1], self.fit_function
+                            )*self.fit_scale_factor]).T,
+                        columns=['x_fit', 'y_fit']))
 
-        return sample
+                    # onset is defined as x_offset + sigma. This only makes sense
+                    # when self.fit_function is 'cum_dist_normal_with_rise'. For
+                    # other cases, the next calculation must be adapted.
+                    curr_onset = self.fit_params[-1][1] + self.fit_params[-1][0]
+
+                    onset_idx = sample['strain'].index[closest_index(
+                        curr_onset, sample['strain'].values)].values[0]
+            else:
+                onset_idx = sample.index[0]
+
+            # data end/sample failure identification
+            if self.data_end_mode is not None:
+                # prevent that the found end of data is at a smaller strain than
+                # the onset
+                if sample.at[onset_idx, 'strain'] > self.end_strain_range[0]:
+                    self.end_strain_range[0] = sample.at[onset_idx, 'strain']
+
+                data_mask = sample['strain'].between(*self.end_strain_range)
+                if self.data_end_mode == 'lower_thresh':
+                    data_mask *= sample['deriv_1'] < self.lower_thresh
+                    if any(data_mask):
+                        end_idx = data_mask.idxmax()
+                    else:
+                        warnings.warn('No end of data found. Possibly the '
+                                      'threshold used is not good. Using the last '
+                                      'data point instead.')
+                        end_idx = sample.index[-1]
+            else:
+                end_idx = sample.index[-1]
+
+            # store identified data borders in corresponding lists
+            self.onsets.append(sample.at[onset_idx, 'strain'])
+            self.data_ends.append(sample.at[end_idx, 'strain'])
+
+            # get the tool distance at the onset
+            h_0 = sample.at[onset_idx, 'tool_distance']
+
+            # crop dataset according to the identified data borders
+            onset_loc = sample.index.get_loc(onset_idx)
+            sample.drop(sample.index[:onset_loc], inplace=True)
+            end_loc = sample.index.get_loc(end_idx)
+            sample.drop(sample.index[end_loc:], inplace=True)
+
+            # recalculate the strain and the derivatives
+            sample['strain'] = ((h_0-sample['tool_distance'])/h_0 *
+                                self.strain_conversion_factor)
+            sample = self.append_derivative(sample, up_to_order=2)
 
     def calc_e_modulus(self, r_squared_lower_limit=0.995, lower_strain_limit=0,
                        upper_strain_limit=50, smoothing=True, **kwargs):
