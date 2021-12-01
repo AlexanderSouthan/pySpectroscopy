@@ -4,3 +4,9 @@
 
 # pyAnalytics
 Package for preprocessing and analysis of analytical data. 
+
+## Installation
+Download and run the following command from the repository folder works:
+```
+pip install -e .
+```
