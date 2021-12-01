@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
-# import plotly.graph_objects as go
+import plotly.graph_objects as go
 from plotly.offline import plot
 
 class confocal_data:
