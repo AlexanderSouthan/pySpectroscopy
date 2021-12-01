@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from pyRegression.nonlinear_regression import calc_function
+from pyDataFitting.nonlinear_regression import calc_function
 from pyAnalytics.hplc_data import hplc_data
 from pyAnalytics.hplc_calibration import hplc_calibration
 

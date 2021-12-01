@@ -1,0 +1,14 @@
+numpy
+matplotlib
+pandas
+tqdm
+glob
+imageio
+scikit-learn
+scipy
+copy
+pip
+little_helpers
+pyPreprocessing
+pyDataFitting
+spc
