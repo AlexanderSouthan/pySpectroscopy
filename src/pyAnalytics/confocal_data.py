@@ -2,7 +2,7 @@
 
 import pandas as pd
 # import plotly.graph_objects as go
-# from plotly.offline import plot
+from plotly.offline import plot
 
 class confocal_data:
     def __init__(self, confocal_image, decimals_coordinates=1):
