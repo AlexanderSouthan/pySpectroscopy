@@ -12,4 +12,4 @@ dependencies:
     - little_helpers
     - pyPreprocessing
     - pyDataFitting
-    - spc
+    - git+https://github.com/rohanisaac/spc@master#egg=spc
