@@ -9,4 +9,4 @@ pip
 little_helpers
 pyPreprocessing
 pyDataFitting
-spc
+git+git://github.com/rohanisaac/spc@master#egg=spc
