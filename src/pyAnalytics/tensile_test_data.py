@@ -324,11 +324,12 @@ class tensile_test():
                     reliable fitting process. Make sure to adapt the
                     fit_boundaries accordingly. Default is 1.
             if data_end_mode == 'lower_thresh' or 'perc_drop':
-                lower_thresh : float
+                lower_thresh : float, optional
                     the threshold level of the derivative at which the sample
-                    is assumed to have failed.
+                    is assumed to have failed. Default is -500 ('lower_thresh')
+                    or 0.05 ('perc_drop').
             if data_end_mode == 'perc_drop':
-                drop_window : int
+                drop_window : int, optional
                     The number of datapoints used for a rolling sum of the
                     stress changes. A bigger window will allow to detect less
                     steep stress drops upon material failure. Default is 1,
@@ -362,10 +363,11 @@ class tensile_test():
         if self.data_end_mode is not None:
             self.end_strain_range = kwargs.get(
                 'end_strain_range', [0, self.strain_conversion_factor])
-            if self.data_end_mode in ['lower_thresh', 'perc_drop']:
-                self.lower_thresh = kwargs.get('lower_thresh', 500)
-                if self.data_end_mode == 'perc_drop':
-                    self.drop_window = kwargs.get('drop_window', 1)
+            if self.data_end_mode == 'lower_thresh':
+                self.lower_thresh = kwargs.get('lower_thresh', -500)
+            elif self.data_end_mode == 'perc_drop':
+                self.lower_thresh = kwargs.get('lower_thresh', 0.05)
+                self.drop_window = kwargs.get('drop_window', 1)
             else:
                 raise ValueError('No valid data_end_mode given.')
 
