@@ -327,6 +327,13 @@ class tensile_test():
                 lower_thresh : float
                     the threshold level of the derivative at which the sample
                     is assumed to have failed.
+            if data_end_mode == 'perc_drop':
+                drop_window : int
+                    The number of datapoints used for a rolling sum of the
+                    stress changes. A bigger window will allow to detect less
+                    steep stress drops upon material failure. Default is 1,
+                    meaning that the lower_thresh must be reached between two
+                    individual data points.
 
         Returns
         -------
@@ -357,6 +364,8 @@ class tensile_test():
                 'end_strain_range', [0, self.strain_conversion_factor])
             if self.data_end_mode in ['lower_thresh', 'perc_drop']:
                 self.lower_thresh = kwargs.get('lower_thresh', 500)
+                if self.data_end_mode == 'perc_drop':
+                    self.drop_window = kwargs.get('drop_window', 1)
             else:
                 raise ValueError('No valid data_end_mode given.')
 
@@ -399,8 +408,8 @@ class tensile_test():
 
             # data end/sample failure identification
             if self.data_end_mode is not None:
-                # prevent that the found end of data is at a smaller strain than
-                # the onset
+                # prevent that the found end of data is at a smaller strain
+                # than the onset
                 if sample.at[onset_idx, 'strain'] > self.end_strain_range[0]:
                     self.end_strain_range[0] = sample.at[onset_idx, 'strain']
 
@@ -411,30 +420,27 @@ class tensile_test():
                         end_idx = data_mask.idxmax()
                     else:
                         warnings.warn('No end of data found. Possibly the '
-                                      'threshold used is not good. Using the last '
-                                      'data point instead.')
+                                      'threshold used is not good. Using the '
+                                      'last data point instead.')
                         end_idx = sample.index[-1]
                 elif self.data_end_mode == 'perc_drop':
-                    y = sample['stress']
-                    diffs = np.diff(y)
-                    perc_drop = pd.Series(diffs / y.max(), index=y.index[1:])
+                    diffs = pd.Series(
+                        np.diff(sample['stress']), index=sample.index[:-1]
+                        ).rolling(self.drop_window).sum()
+                    perc_drop = diffs / sample['stress'].max()
 
-                    thresh_violated = (np.abs(perc_drop) > self.lower_thresh) & (perc_drop < 0)
+                    thresh_violated = data_mask[:-1]*(
+                        (np.abs(perc_drop) > self.lower_thresh) &
+                        (perc_drop < 0))
 
                     if any(thresh_violated):
                         end_idx = thresh_violated.idxmax()
                     else:
                         warnings.warn('No end of data found. Possibly the '
-                                      'threshold used is not good. Using the last '
-                                      'data point instead.')
+                                      'threshold used is not good. Using the '
+                                      'last data point instead.')
                         end_idx = sample.index[-1]
-                    print('end_idx ', end_idx, 'onset ', onset_idx)
             else:
-                end_idx = sample.index[-1]
-
-            if onset_idx >= end_idx:
-                warnings.warn('End of data index not bigger than onset index. '
-                              'Using the last data point as end of data.')
                 end_idx = sample.index[-1]
 
             # store identified data borders in corresponding lists
