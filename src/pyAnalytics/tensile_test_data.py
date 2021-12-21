@@ -22,7 +22,7 @@ from little_helpers.num_derive import derivative
 
 
 class tensile_test():
-    def __init__(self, import_file, import_mode, unit_strain='%',
+    def __init__(self, data, data_mode, unit_strain='%',
                  unit_stress='kPa', offset_correction=False, deriv_window=5,
                  **kwargs):
         """
@@ -33,16 +33,19 @@ class tensile_test():
 
         Parameters
         ----------
-        import_file : string
-            The file path of the file that contains the tensile test data. The
-            data will be imported to self.data_raw. The file will usually
-            be an Excel file, but could also be an ASCII file. The
+        data : string or DataFrame
+            Either the DataFrame containing the data (data_mode is 'DataFrame')
+            or otherwise the file path of the file that contains the tensile
+            test data. The data will be imported to self.data_raw. The file
+            will usually be an Excel file, but could also be an ASCII file. The
             corresponding import filters have to be defined in
             self.import_data.
-        import_mode : string
+        data_mode : string
             Selects the import filter used when importing the data. Currently
-            allowed values are 'Marc_Stuhlmüller', 'Philipp Manglkammer' and
-            'Lena_Schunter'.
+            allowed values are 'Marc_Stuhlmüller', 'Philipp Manglkammer',
+            'Lena_Schunter' and 'DataFrame'. 'DataFrame' means that the data
+            is passed directly as data argument in a DataFrame with the format
+            of self.data_raw.
         unit_strain : string, optional
             The unit of the strain values in the dataset. Allowed values are
             '', meaning that it is dimensionless, and '%', meaning that the
@@ -112,8 +115,8 @@ class tensile_test():
                 self.elongation_at_break_title, self.slope_limit_title,
                 self.intercept_limit_title])
 
-        self.import_file = import_file
-        self.import_mode = import_mode
+        self.import_file = data
+        self.import_mode = data_mode
         self.import_data()
         # copy original raw data and use this copy for further processing
         self.data_revised = deepcopy(self.data_raw)
@@ -156,7 +159,6 @@ class tensile_test():
                       str(sys.exc_info()[2].tb_lineno) + ': ', e)
 
         elif self.import_mode == 'Philipp Manglkammer':
-            #try:
             # Read excel file
             raw_excel = pd.ExcelFile(self.import_file)
             # Save sheets starting with the third into list
@@ -167,9 +169,6 @@ class tensile_test():
                         raw_excel.parse(sheet_name, header=2,
                                         names=['stress', 'strain'],
                                         usecols=[0, 1]))
-            #except Exception as e:
-            #    print('Error while file import in line ' +
-            #          str(sys.exc_info()[2].tb_lineno) + ': ', e)
 
         elif self.import_mode == 'Lena_Schunter':
             # Read excel file
@@ -183,6 +182,9 @@ class tensile_test():
                                         names=['tool_distance', 'strain',
                                                'stress'],
                                         usecols=[0, 1, 2]))
+
+        elif self.import_mode == 'DataFrame':
+            self.data_raw = self.import_file
 
         else:
             raise ValueError('No valid import mode entered.')
@@ -577,7 +579,7 @@ class tensile_test():
         for sample in self.data_processed:
             self.strength.append(
                     np.around(sample['stress'].max(), decimals=1))
-            
+
         self.results[self.strength_title] = self.strength
         return self.strength
 
