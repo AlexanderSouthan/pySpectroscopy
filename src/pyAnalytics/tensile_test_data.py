@@ -287,8 +287,10 @@ class tensile_test():
             Gives the mthod to determine the end of the measurement, usually
             material failure. Allowed values are 'lower_thresh' (end of 
             measurement is identified by a large negative spike in the
-            derivative) and None (no data end treatment). The corresponding
-            methods are configured using kwargs (see below). Default is None.
+            derivative), 'perc_drop' (end identified by a drop of stress
+            relative to maximum stress in measurement) and None (no data end
+            treatment). The corresponding methods are configured using kwargs
+            (see below). Default is None.
         **kwargs :
             onset_strain_range : list of float, optional
                 A list containing two floats defining the strain range where
@@ -321,7 +323,7 @@ class tensile_test():
                     the fit. A higher value might result in a more stable/
                     reliable fitting process. Make sure to adapt the
                     fit_boundaries accordingly. Default is 1.
-            if data_end_mode == 'lower_thresh':
+            if data_end_mode == 'lower_thresh' or 'perc_drop':
                 lower_thresh : float
                     the threshold level of the derivative at which the sample
                     is assumed to have failed.
