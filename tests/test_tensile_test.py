@@ -29,6 +29,7 @@ class TestArrayTools(unittest.TestCase):
         tens_test.calc_strength()
         tens_test.calc_toughness()
         tens_test.calc_elongation_at_break()
+        tens_test.generate_plots()
 
         self.assertAlmostEqual(
             tens_test.results.loc[0, tens_test.e_modulus_title], 3, 5)
