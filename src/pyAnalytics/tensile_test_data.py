@@ -432,8 +432,10 @@ class tensile_test():
             else:
                 end_idx = sample.index[-1]
 
-            # if onset_idx >= end_idx:
-            #     end_idx = sample.index[-1]
+            if onset_idx >= end_idx:
+                warnings.warn('End of data index not bigger than onset index. '
+                              'Using the last data point as end of data.')
+                end_idx = sample.index[-1]
 
             # store identified data borders in corresponding lists
             self.onsets.append(sample.at[onset_idx, 'strain'])
