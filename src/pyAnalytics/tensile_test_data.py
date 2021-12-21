@@ -353,7 +353,7 @@ class tensile_test():
         if self.data_end_mode is not None:
             self.end_strain_range = kwargs.get(
                 'end_strain_range', [0, self.strain_conversion_factor])
-            if self.data_end_mode == 'lower_thresh':
+            if self.data_end_mode in ['lower_thresh', 'perc_drop']:
                 self.lower_thresh = kwargs.get('lower_thresh', 500)
             else:
                 raise ValueError('No valid data_end_mode given.')
@@ -412,8 +412,26 @@ class tensile_test():
                                       'threshold used is not good. Using the last '
                                       'data point instead.')
                         end_idx = sample.index[-1]
+                elif self.data_end_mode == 'perc_drop':
+                    y = sample['stress']
+                    diffs = np.diff(y)
+                    perc_drop = pd.Series(diffs / y.max(), index=y.index[1:])
+
+                    thresh_violated = (np.abs(perc_drop) > self.lower_thresh) & (perc_drop < 0)
+
+                    if any(thresh_violated):
+                        end_idx = thresh_violated.idxmax()
+                    else:
+                        warnings.warn('No end of data found. Possibly the '
+                                      'threshold used is not good. Using the last '
+                                      'data point instead.')
+                        end_idx = sample.index[-1]
+                    print('end_idx ', end_idx, 'onset ', onset_idx)
             else:
                 end_idx = sample.index[-1]
+
+            # if onset_idx >= end_idx:
+            #     end_idx = sample.index[-1]
 
             # store identified data borders in corresponding lists
             self.onsets.append(sample.at[onset_idx, 'strain'])
