@@ -15,7 +15,7 @@ from copy import deepcopy
 
 from pyDataFitting.linear_regression import lin_reg_all_sections
 from pyDataFitting.nonlinear_regression import (nonlinear_regression,
-                                               calc_function)
+                                                calc_function)
 from pyPreprocessing.smoothing import smoothing
 from little_helpers.array_tools import closest_index
 from little_helpers.num_derive import derivative
@@ -91,15 +91,20 @@ class tensile_test():
         elif self.unit_strain == '%':
             self.strain_conversion_factor = 100
         else:
-            raise ValueError('No valid unit_strain. Allowed values are \'%\' or \'\'.')
+            raise ValueError('No valid unit_strain. Allowed values are \'%\' '
+                             'or \'\'.')
 
         self.e_modulus_title = 'e_modulus [' + self.unit_stress + ']'
         self.linear_limit_title = 'linear_limit [' + self.unit_strain + ']'
         self.strength_title = 'strength [' + self.unit_stress + ']'
-        self.toughness_title = 'toughness [' + self.unit_stress + '] (Pa = J/m^3)'
-        self.elongation_at_break_title = 'elongation_at_break [' + self.unit_strain + ']'
-        self.slope_limit_title = 'slope_limit [' + self.unit_stress + '/' + self.unit_strain + ']'
-        self.intercept_limit_title = 'intercept_limit [' + self.unit_stress + ']'
+        self.toughness_title = ('toughness [' + self.unit_stress + '] '
+                                '(Pa = J/m^3)')
+        self.elongation_at_break_title = ('elongation_at_break ['
+                                          '' + self.unit_strain + ']')
+        self.slope_limit_title = ('slope_limit [' + self.unit_stress + '/'
+                                  '' + self.unit_strain + ']')
+        self.intercept_limit_title = ('intercept_limit ['
+                                      ''+ self.unit_stress + ']')
 
         self.results = pd.DataFrame([], columns=[
                 'name', self.e_modulus_title, self.linear_limit_title,
@@ -184,10 +189,6 @@ class tensile_test():
 
     def append_derivative(self, sample, up_to_order=2):
         for curr_order in range(1, up_to_order+1):
-            # sample['deriv_{}'.format(curr_order)] = smoothing(
-            #     sample[['stress']].values.T, 'sav_gol', deriv=curr_order,
-            #     savgol_points=self.savgol_window, poly_order=3,
-            #     interpolate=False).T
             sample['deriv_{}'.format(curr_order)] = derivative(
                 sample['strain'].values/self.strain_conversion_factor,
                 sample[['stress']].values.T, order=curr_order,
@@ -534,16 +535,19 @@ class tensile_test():
             sample_cropped.reset_index(drop=True, inplace=True)
 
             # do regression and append results to sample DataFrame
-            regression_results, curr_linear_limit, curr_linear_limit_stress, curr_slope_at_limit, curr_intercept_at_limit = lin_reg_all_sections(sample_cropped.loc[:, 'strain'].values, sample_cropped.loc[:, 'smoothed'].values, r_squared_limit = r_squared_lower_limit, mode = 'both')
-            sample_cropped = pd.concat([sample_cropped, regression_results],
+            regression_results = lin_reg_all_sections(
+                sample_cropped.loc[:, 'strain'].values,
+                sample_cropped.loc[:, 'smoothed'].values,
+                r_squared_limit=r_squared_lower_limit, mode='both')
+            sample_cropped = pd.concat([sample_cropped, regression_results[0]],
                                        axis=1)
 
-            slope_limit.append(curr_slope_at_limit)
-            intercept_limit.append(curr_intercept_at_limit)
-            linear_limit.append(curr_linear_limit)
+            slope_limit.append(regression_results[3])
+            intercept_limit.append(regression_results[4])
+            linear_limit.append(regression_results[1])
 
             # Calculate youngs modulus
-            curr_e_modulus = (np.around(curr_slope_at_limit, decimals=3)*
+            curr_e_modulus = (np.around(regression_results[3], decimals=3)*
                               self.strain_conversion_factor)
 
             # Save result in list
@@ -667,22 +671,30 @@ class tensile_test():
         # Plot whole graph with regression line
         for ii, (raw_sample, processed_sample, el_at_break, strength,
                 curr_linear_limit, curr_slope_limit, curr_intercept_limit
-                ) in enumerate(zip(self.data_processed, self.data_processed, self.elongation_at_break,
-                self.strength, self.results[self.linear_limit_title], self.results[self.slope_limit_title], self.results[self.intercept_limit_title])):
+                ) in enumerate(zip(
+                    self.data_processed, self.data_processed,
+                    self.elongation_at_break, self.strength,
+                    self.results[self.linear_limit_title],
+                    self.results[self.slope_limit_title],
+                    self.results[self.intercept_limit_title])):
             fig = plt.subplot(len(self.data_processed), 3, 1+ii*3)
             if ii==0: plt.title('Tensile test')
-            if ii==int(len(self.data_processed)/2): plt.ylabel(r'$\sigma$ [kPa]')
+            if ii==int(len(self.data_processed)/2):
+                plt.ylabel(r'$\sigma$ [kPa]')
             if ii==len(self.data_processed)-1: 
                 plt.xlabel(r'$\epsilon$ [%]')
             else:
                 fig.axes.xaxis.set_ticklabels([])
-            plt.axvline(el_at_break,ls='--',c='k',lw=0.5)
-            plt.axhline(strength,ls='--',c='k',lw=0.5)
-            plt.plot(raw_sample['strain'],raw_sample['stress'], linestyle='-')
-            plt.plot(processed_sample['strain'],processed_sample['stress'], linestyle='-',color='y')
-            plt.plot(np.linspace(0,curr_linear_limit),curr_slope_limit*np.linspace(0,curr_linear_limit)+curr_intercept_limit, color='indianred')
-            plt.xlim(global_min_strain,1.05*global_max_strain)
-            plt.ylim(global_min_stress,1.05*global_max_stress)
+            plt.axvline(el_at_break, ls='--', c='k', lw=0.5)
+            plt.axhline(strength, ls='--', c='k', lw=0.5)
+            plt.plot(raw_sample['strain'], raw_sample['stress'], linestyle='-')
+            plt.plot(processed_sample['strain'], processed_sample['stress'],
+                     linestyle='-', color='y')
+            plt.plot(np.linspace(0, curr_linear_limit),
+                     curr_slope_limit*np.linspace(0, curr_linear_limit)+
+                     curr_intercept_limit, color='indianred')
+            plt.xlim(global_min_strain, 1.05*global_max_strain)
+            plt.ylim(global_min_stress, 1.05*global_max_stress)
 
         # Plot r-sqaured 
         plt.subplots_adjust(wspace = 0.5)
@@ -696,11 +708,12 @@ class tensile_test():
                 plt.xlabel(r'$\epsilon$ [%]')
             else:
                 fig.axes.xaxis.set_ticklabels([])
-            plt.yticks([0.975,1.0])
-            plt.plot(emod_sample.loc[1:,'strain'],emod_sample.loc[1:,'r_squared'], color='indianred')
-            plt.axvline(curr_linear_limit,ls='--',c='k',lw=0.5)
-            plt.axhline(self.r_squared_lower_limit,ls='--',c='k',lw=0.5)
-            plt.xlim(0,max_strain_cropped)
+            plt.yticks([0.975, 1.0])
+            plt.plot(emod_sample.loc[1:, 'strain'],
+                     emod_sample.loc[1:, 'r_squared'], color='indianred')
+            plt.axvline(curr_linear_limit, ls='--', c='k', lw=0.5)
+            plt.axhline(self.r_squared_lower_limit, ls='--', c='k', lw=0.5)
+            plt.xlim(0, max_strain_cropped)
             plt.ylim(0.95, 1)
 
         # Plot E modulus
@@ -716,9 +729,10 @@ class tensile_test():
                 fig.axes.xaxis.set_ticklabels([])
             #plt.ylim(0.95, 1)
             #plt.yticks([0.975,1.0])
-            plt.plot(emod_sample.loc[1:,'strain'],emod_sample.loc[1:,'slopes']*100, color='indianred')
-            plt.axvline(curr_linear_limit,ls='--',c='k',lw=0.5)
-            plt.xlim(0,max_strain_cropped)
+            plt.plot(emod_sample.loc[1:,'strain'],
+                     emod_sample.loc[1:,'slopes']*100, color='indianred')
+            plt.axvline(curr_linear_limit,ls='--', c='k', lw=0.5)
+            plt.xlim(0, max_strain_cropped)
 
         if export_path is not None:
             export_name = kwargs.get('export_name', 'Tensile test')
@@ -728,21 +742,3 @@ class tensile_test():
             plt.savefig(export_path + 'Plots/' + export_name + '.png', dpi=500)
             #plt.clf()
             plt.close()
-
-
-if __name__ == "__main__":
-    #file = r'Z:\Charakterisierungen und Messungen\Python\zz_not_yet_in_git\04_Zugversuch-Auswertung\62\62.xls'
-    #file = r'Z:/Lehre/Studentische Arbeiten/02 Abgeschlossene Arbeiten/2019_Marc Stuhlmüller/Messdaten Zugversuche/03_Messdaten Zugversuche bis 15/23.xls'
-    # file = r'Z:\Charakterisierungen und Messungen\Python\zz_not_yet_in_git\04_Zugversuch-Auswertung\62\Mappe1.xlsx'
-    # file = r'/home/almami/Alexander/Python_Skripte/yy_Not_yet_in_git/04_Zugversuch-Auswertung/62/62.xls'
-
-    file = r'Z:\Lehre\Studentische Arbeiten\02 Abgeschlossene Arbeiten\2020_Rebecca Hirsch\Messdaten_Zugversuche.xls'
-
-    tensile_test = tensile_test(file, 'Marc_Stuhlmueller', unit_strain='%',
-                                unit_stress='MPa')
-    tensile_test.calc_e_modulus(r_squared_lower_limit = 0.998, upper_strain_limit=5,
-                            sav_gol_window=500, data_points=10000)
-    tensile_test.calc_strength()
-    tensile_test.calc_toughness()
-    tensile_test.calc_elongation_at_break()
-    test_results = tensile_test.results
