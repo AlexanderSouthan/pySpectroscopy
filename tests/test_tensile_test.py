@@ -13,7 +13,7 @@ import pandas as pd
 from src.pyAnalytics import tensile_test_data
 
 
-class TestArrayTools(unittest.TestCase):
+class TestTensileTest(unittest.TestCase):
 
     def test_tensile_test(self):
 
