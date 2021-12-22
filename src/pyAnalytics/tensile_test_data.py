@@ -8,7 +8,6 @@ Created on Tue Mar 10 17:31:29 2020
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import sys
 import os
 import warnings
 from copy import deepcopy
@@ -42,10 +41,11 @@ class tensile_test():
             self.import_data.
         data_mode : string
             Selects the import filter used when importing the data. Currently
-            allowed values are 'Marc_Stuhlmüller', 'Philipp Manglkammer',
-            'Lena_Schunter' and 'DataFrame'. 'DataFrame' means that the data
-            is passed directly as data argument in a DataFrame with the format
-            of self.data_raw.
+            allowed values are 'import' and 'DataFrame'. 'DataFrame' means that
+            the data is passed directly as data argument in a DataFrame with
+            the format of self.data_raw. 'import' means the data is imported
+            from an Excel file containing the data of different samples in
+            different sheets. See kwargs section for import options.
         unit_strain : string, optional
             The unit of the strain values in the dataset. Allowed values are
             '', meaning that it is dimensionless, and '%', meaning that the
@@ -67,6 +67,26 @@ class tensile_test():
                 values at the strain values within the interval. If both values
                 are equal, only one value is used for offset determination. The
                 default is the first value of the measurement.
+            start_sheet : int, optional
+                Only needed for data_mode 'import'. The number of the first
+                sheet in the Excel file containing the data, with 0 being the
+                first sheet. This is useful if the first sheets contain e.g.
+                some metadata about the measurements. All following sheets
+                must contain one dataset each. The default is 2.
+            columns : list of int, optional
+                Only needed for data_mode 'import'. A list containing the
+                number of the columns to be imported, with 0 being the first
+                column. The default is [0, 1].
+            column_names : list of string, optional
+                Only needed for data_mode 'import'. Contains the names of the
+                columns imported. Must at least contain 'stress' and 'strain'.
+                'tool_distance' is also allowed if onset and end detection are
+                performed (needed for recalculation of strain). Other names can
+                be included, but are not used for anything at the moment. The
+                default is ['strain', 'stress'].
+            header_rows : int, optional
+                Only needed for data_mode 'import'. The number of rows to be
+                skipped during data import. The default is 2.
 
         Raises
         ------
@@ -115,9 +135,24 @@ class tensile_test():
                 self.elongation_at_break_title, self.slope_limit_title,
                 self.intercept_limit_title])
 
-        self.import_file = data
-        self.import_mode = data_mode
-        self.import_data()
+        self.data_mode = data_mode
+
+        if self.data_mode == 'import':
+            start_sheet = kwargs.get('start_sheet', 2)
+            columns = kwargs.get('columns', [0, 1])
+            column_names = kwargs.get('column_names', ['strain', 'stress'])
+            header_rows = kwargs.get('header_rows', 2)
+            if len(column_names) != len(columns):
+                raise ValueError('Number of imported columns and column names '
+                                 'must be equal.')
+            self.import_data(data, start_sheet, columns, column_names,
+                             header_rows)
+        elif self.data_mode == 'DataFrame':
+            self.data_raw = data
+        else:
+            raise ValueError('No valid import mode entered. ALlowed values are'
+                             '\'DataFrame\' and \'import\'.')
+            
         # copy original raw data and use this copy for further processing
         self.data_revised = deepcopy(self.data_raw)
         for sample in self.data_revised:
@@ -128,7 +163,8 @@ class tensile_test():
         # for sample in self.data_processed:
         #     sample = self.find_data_borders(sample)
 
-    def import_data(self):
+    def import_data(self, file_name, start_sheet=2, columns=[0, 1],
+                    column_names=['strain', 'stress'], header_rows=2):
         """
         Import the data from the external sources into self.data_raw.
 
@@ -137,57 +173,24 @@ class tensile_test():
         data of one tensile test. If only one dataset is present, it is a list
         containing only one DataFrame.
 
+        For explanation of the arguments, see kwargs in docstring of
+        self.__init__().
+
         Returns
         -------
         None.
 
         """
-        if self.import_mode == 'Marc_Stuhlmueller':
-            try:
-                # Read excel file
-                raw_excel = pd.ExcelFile(self.import_file)
-                # Save sheets starting with the third into list
-                self.data_raw = []
-                self.results['name'] = raw_excel.sheet_names[3:]
-                for sheet_name in raw_excel.sheet_names[3:]:
-                    self.data_raw.append(
-                            raw_excel.parse(sheet_name, header=2,
-                                            names=['strain', 'Standardkraft',
-                                                   'stress']))
-            except Exception as e:
-                print('Error while file import in line ' +
-                      str(sys.exc_info()[2].tb_lineno) + ': ', e)
-
-        elif self.import_mode == 'Philipp Manglkammer':
-            # Read excel file
-            raw_excel = pd.ExcelFile(self.import_file)
-            # Save sheets starting with the third into list
-            self.data_raw = []
-            self.results['name'] = raw_excel.sheet_names[3:]
-            for sheet_name in raw_excel.sheet_names[3:]:
-                self.data_raw.append(
-                        raw_excel.parse(sheet_name, header=2,
-                                        names=['stress', 'strain'],
-                                        usecols=[0, 1]))
-
-        elif self.import_mode == 'Lena_Schunter':
-            # Read excel file
-            raw_excel = pd.ExcelFile(self.import_file)
-            # Save sheets starting with the second into list
-            self.data_raw = []
-            self.results['name'] = raw_excel.sheet_names[2:]
-            for sheet_name in raw_excel.sheet_names[2:]:
-                self.data_raw.append(
-                        raw_excel.parse(sheet_name, header=2,
-                                        names=['tool_distance', 'strain',
-                                               'stress'],
-                                        usecols=[0, 1, 2]))
-
-        elif self.import_mode == 'DataFrame':
-            self.data_raw = self.import_file
-
-        else:
-            raise ValueError('No valid import mode entered.')
+        # Read excel file
+        raw_excel = pd.ExcelFile(file_name)
+        # Save sheets starting with the second into list
+        self.data_raw = []
+        self.results['name'] = raw_excel.sheet_names[start_sheet:]
+        for sheet_name in raw_excel.sheet_names[start_sheet:]:
+            self.data_raw.append(
+                    raw_excel.parse(sheet_name, header=header_rows,
+                                    names=column_names,
+                                    usecols=columns))
 
     def append_derivative(self, sample, up_to_order=2):
         for curr_order in range(1, up_to_order+1):
@@ -375,6 +378,11 @@ class tensile_test():
                 raise ValueError('No valid data_end_mode given.')
 
         for sample in self.data_processed:
+            assert 'tool_distance' in sample.columns, (
+                'There is no column with a label \'tool_distance\' in the '
+                'dataset. Please make sure that this is the case before '
+                'calling this method.')
+
             # onset identification
             if self.onset_mode is not None:
                 # select only the data between the corresponding onset strain
