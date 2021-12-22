@@ -36,9 +36,8 @@ class tensile_test():
             Either the DataFrame containing the data (data_mode is 'DataFrame')
             or otherwise the file path of the file that contains the tensile
             test data. The data will be imported to self.data_raw. The file
-            will usually be an Excel file, but could also be an ASCII file. The
-            corresponding import filters have to be defined in
-            self.import_data.
+            will usually be an Excel file. The corresponding import filters
+            have to be defined in self.import_data.
         data_mode : string
             Selects the import filter used when importing the data. Currently
             allowed values are 'import' and 'DataFrame'. 'DataFrame' means that
@@ -183,7 +182,7 @@ class tensile_test():
         """
         # Read excel file
         raw_excel = pd.ExcelFile(file_name)
-        # Save sheets starting with the second into list
+        # Save sheet data starting with start_sheet into list
         self.data_raw = []
         self.results['name'] = raw_excel.sheet_names[start_sheet:]
         for sheet_name in raw_excel.sheet_names[start_sheet:]:
