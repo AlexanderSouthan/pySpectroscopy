@@ -15,7 +15,7 @@ from raman_visualization_window import raman_visualization_window
 from raman_preprocessing_window import raman_preprocessing_window
 from raman_univariate_analysis_window import raman_univariate_analysis_window
 from raman_pca_window import raman_pca_window
-from pyRegression.pca_viewer import pca_viewer
+from gui_objects.pca_viewer import pca_viewer
 from raman_ref_spec_fit_window import raman_ref_spec_fit_window
 from reference_spectra_fit_viewer import reference_spectra_fit_viewer
 from raman_3d_intensity_viewer import raman_3d_intensity_viewer
