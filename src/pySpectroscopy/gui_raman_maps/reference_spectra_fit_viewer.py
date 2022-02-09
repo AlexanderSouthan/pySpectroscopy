@@ -5,7 +5,7 @@ from gui_objects.plot_canvas import plot_canvas
 from PyQt5.QtWidgets import (QMainWindow,QComboBox,QWidget,QGridLayout,
                              QDesktopWidget,QLabel,QVBoxLayout)
 
-from pyAnalytics.raman_data import raman_image
+from pySpectroscopy.raman_data import raman_image
 
 
 class reference_spectra_fit_viewer(QMainWindow):

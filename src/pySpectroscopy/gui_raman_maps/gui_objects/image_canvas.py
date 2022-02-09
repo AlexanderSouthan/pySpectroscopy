@@ -37,14 +37,14 @@ class image_canvas(FigureCanvas):
         self.horizontal_axis = horizontal_axis
         
         if self.scroll_type == 'z':
-            self.slices = len(self.parent.parent.z_values_coded_processed)
-            self.coordinates = self.parent.parent.z_values_processed
+            self.slices = len(self.parent.z_values_coded_processed)
+            self.coordinates = self.parent.z_values_processed
         elif self.scroll_type == 'y':
-            self.slices = len(self.parent.parent.y_values_coded_processed)
-            self.coordinates = self.parent.parent.y_values_processed
+            self.slices = len(self.parent.y_values_coded_processed)
+            self.coordinates = self.parent.y_values_processed
         elif self.scroll_type == 'x':
-            self.slices = len(self.parent.parent.x_values_coded_processed)
-            self.coordinates = self.parent.parent.x_values_processed
+            self.slices = len(self.parent.x_values_coded_processed)
+            self.coordinates = self.parent.x_values_processed
         else:
             self.slices = 1
         
@@ -60,15 +60,25 @@ class image_canvas(FigureCanvas):
         if self.scroll_type in ['x','y','z']:
             self.ax.set_title('slice %s/%s, %s = %s' % (self.ind+1,self.slices,self.scroll_type,self.coordinates[self.ind]))
         self.im.axes.figure.canvas.draw()
-        
+
     def calc_curr_data(self,mode='continuous'):
-        if mode=='initial': self.ind = self.slices//2
-        
+        if mode=='initial':
+            self.ind = self.slices//2
+
         if self.scroll_type == 'z':
-            self.curr_dataset = self.parent.parent.raman_data.xy_slice(self.parent.parent.z_values_coded_processed[self.ind],col_index = self.parent.parent.projections_window.select_column_combo.currentText())
+            self.curr_dataset = self.parent.raman_data.xy_slice(
+                self.parent.z_values_coded_processed[self.ind],
+                self.parent.select_data_combo.currentText(),
+                col_index = self.parent.select_column_combo.currentText())
         elif self.scroll_type == 'y':
-            self.curr_dataset = self.parent.parent.raman_data.xz_slice(self.parent.parent.y_values_coded_processed[self.ind],col_index = self.parent.parent.projections_window.select_column_combo.currentText())
+            self.curr_dataset = self.parent.raman_data.xz_slice(
+                self.parent.y_values_coded_processed[self.ind],
+                self.parent.select_data_combo.currentText(),
+                col_index = self.parent.select_column_combo.currentText())
         elif self.scroll_type == 'x':
-            self.curr_dataset = self.parent.parent.raman_data.yz_slice(self.parent.parent.x_values_coded_processed[self.ind],col_index = self.parent.parent.projections_window.select_column_combo.currentText())
+            self.curr_dataset = self.parent.raman_data.yz_slice(
+                self.parent.x_values_coded_processed[self.ind],
+                self.parent.select_data_combo.currentText(),
+                col_index = self.parent.select_column_combo.currentText())
         else:
             self.curr_dataset = self.data

@@ -7,8 +7,8 @@ from PyQt5.QtWidgets import (QMainWindow, QComboBox, QWidget, QLineEdit,
 
 # import own modules ################
 #from gui_objects.plot_canvas import plot_canvas
-from pyAnalytics.raman_data import raman_image
-from pyAnalytics.spectroscopy_data import spectroscopy_data
+from pySpectroscopy.raman_data import raman_image
+from pySpectroscopy.spectroscopy_data import spectroscopy_data
 # from hplc_calibration_window import hplc_calibration_window
 # from hplc_visualization_window import hplc_visualization_window
 #####################################

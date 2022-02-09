@@ -5,8 +5,8 @@ from gui_objects.plot_canvas import plot_canvas
 from PyQt5.QtWidgets import (QMainWindow, QLabel, QComboBox, QWidget,
                              QGridLayout, QHBoxLayout, QVBoxLayout,
                              QDesktopWidget)
-from pyAnalytics.spectroscopy_data import spectroscopy_data
-from pyAnalytics.raman_data import raman_image
+from pySpectroscopy.spectroscopy_data import spectroscopy_data
+from pySpectroscopy.raman_data import raman_image
 
 
 class pca_viewer(QMainWindow):

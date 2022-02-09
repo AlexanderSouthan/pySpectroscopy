@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QComboBox, QWidget,
                              QActionGroup, QMenu, QListWidget, QPushButton,
                              QAbstractItemView, QErrorMessage)
 
-from pyAnalytics.raman_data import raman_image
+from pySpectroscopy.raman_data import raman_image
 from raman_import_window import raman_import_window
 from raman_export_window import raman_export_window
 from raman_visualization_window import raman_visualization_window

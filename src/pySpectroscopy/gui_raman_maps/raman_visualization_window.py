@@ -8,8 +8,8 @@ from PyQt5.QtWidgets import (QMainWindow, QComboBox, QWidget,
                              QDesktopWidget, QPushButton)
 
 from gui_objects.plot_canvas import plot_canvas
-from pyAnalytics.spectroscopy_data import spectroscopy_data
-from pyAnalytics.raman_data import raman_image
+from pySpectroscopy.spectroscopy_data import spectroscopy_data
+from pySpectroscopy.raman_data import raman_image
 
 
 class raman_visualization_window(QMainWindow):
