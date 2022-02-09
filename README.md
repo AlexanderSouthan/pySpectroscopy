@@ -2,7 +2,7 @@
 [![build workflow](https://github.com/AlexanderSouthan/pyAnalytics/actions/workflows/main.yml/badge.svg)](https://github.com/AlexanderSouthan/pyAnalytics/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/AlexanderSouthan/pyAnalytics/branch/master/graph/badge.svg?token=7GN1K2MVJ3)](https://codecov.io/gh/AlexanderSouthan/pyAnalytics)
 
-# pyAnalytics
+# pySpectroscopy
 Package for preprocessing and analysis of analytical data. 
 
 ## Installation
