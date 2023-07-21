@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/AlexanderSouthan/pySpectroscopy/branch/master/graph/badge.svg?token=YZ664U1L0Y)](https://codecov.io/gh/AlexanderSouthan/pySpectroscopy)
 
 # pySpectroscopy
-Package for preprocessing and analysis of spectroscopic data. 
+Package for preprocessing and analysis of spectroscopic data. The code is a bit messy at the moment, but most features work. 
 
 ## Installation
 Download and run the following command from the repository folder works:
