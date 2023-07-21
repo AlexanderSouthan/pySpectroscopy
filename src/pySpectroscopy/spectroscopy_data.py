@@ -10,11 +10,12 @@ from tqdm import tqdm
 from scipy.integrate import cumtrapz, trapz
 # from sklearn.decomposition import PCA
 
+from little_helpers.array_tools import closest_index
 from pyPreprocessing.baseline_correction import generate_baseline
 from pyPreprocessing.smoothing import smoothing as smooth_data
 import pyPreprocessing.transform as transform
 import pyDataFitting.linear_regression as l_reg
-from pyDataFitting.multivariate_regression import principal_component_regression
+from pyDataFitting import principal_component_regression
 
 
 class spectroscopy_data:
@@ -97,7 +98,7 @@ class spectroscopy_data:
 # preprocessing methods
 ###############################
 
-    def mean_center(self, active_data=None):
+    def mean_center(self, active_data=None, apply=True):
         """
         Subtract the mean spectrum from each spectrum im self.spectral_data.
 
@@ -122,11 +123,12 @@ class spectroscopy_data:
             index=active_data.index, columns=active_data.columns).round(
                 decimals=6)
 
-        self.spectral_data_processed = mean_centered_data
+        if apply:
+            self.spectral_data_processed = mean_centered_data
 
         return mean_centered_data
 
-    def standard_normal_variate(self, active_data=None):
+    def standard_normal_variate(self, active_data=None, apply=True):
         """
         Mean center spectra and scale to unit variance (SNV).
 
@@ -159,11 +161,12 @@ class spectroscopy_data:
                 index=active_data.index,
                 columns=active_data.columns).round(decimals=6)
 
-        self.spectral_data_processed = SNV_scaled_data
+        if apply:
+            self.spectral_data_processed = SNV_scaled_data
 
         return SNV_scaled_data
 
-    def clip_wavenumbers(self, wn_limits, active_data=None):
+    def clip_wavenumbers(self, wn_limits, active_data=None, apply=True):
         """
         Select certain wavenumber ranges from spectral data.
 
@@ -212,11 +215,13 @@ class spectroscopy_data:
 
         clipped_data = active_data.iloc[:, clipping_index]
 
-        self.spectral_data_processed = clipped_data
+        if apply:
+            self.spectral_data_processed = clipped_data
 
         return clipped_data
 
-    def clip_samples(self, mode='coords', active_data=None, **kwargs):
+    def clip_samples(self, mode='coords', active_data=None, apply=True,
+                     **kwargs):
         active_data = self.check_active_data(active_data)
 
         if mode == 'coords':
@@ -237,11 +242,12 @@ class spectroscopy_data:
             sample_names = kwargs.get('sample_names', active_data.index)
             clipped_data = active_data.loc[sample_names]
 
-        self.spectral_data_processed = clipped_data
+        if apply:
+            self.spectral_data_processed = clipped_data
 
         return clipped_data
 
-    def smoothing(self, mode, active_data=None, **kwargs):
+    def smoothing(self, mode, active_data=None, apply=True, **kwargs):
         active_data = self.check_active_data(active_data)
 
         smoothed_data = pd.DataFrame(
@@ -249,28 +255,57 @@ class spectroscopy_data:
             index=active_data.index, columns=active_data.columns).round(
                 decimals=6)
 
-        self.spectral_data_processed = smoothed_data
+        if apply:
+            self.spectral_data_processed = smoothed_data
 
         return smoothed_data
 
-    def normalize(self, mode, active_data=None):
+    def normalize(self, mode, active_data=None, value=1, apply=True, **kwargs):
         active_data = self.check_active_data(active_data)
 
-        normalize_modes = ['total_intensity']
+        normalize_modes = ['total_intensity', 'integral']
         assert mode in normalize_modes, 'normalize mode unknown'
 
         if mode == normalize_modes[0]:  # total_intensity
             normalized_data = pd.DataFrame(transform.normalize(
-                active_data.values, mode,
+                active_data.values, mode, factor=value,
                 x_data=active_data.columns.to_numpy()),
                 index=active_data.index, columns=active_data.columns)
+        elif mode == normalize_modes[1]:  # 'integral'
+            if 'limits' in kwargs:
+                limits = kwargs.get('limits')
+            else:
+                raise TypeError('For mode \'integral\' limits must be given.')
+            normalized_data = pd.DataFrame(transform.normalize(
+                active_data.values, mode, factor=value,
+                x_data=active_data.columns.to_numpy(), limits=limits),
+                index=active_data.index, columns=active_data.columns)
 
-        self.spectral_data_processed = normalized_data
+        if apply:
+            self.spectral_data_processed = normalized_data
 
         return normalized_data
 
+    def integrate_spectra(self, active_data=None, x_limits=None):
+        active_data = self.check_active_data(active_data)
+
+        if x_limits is None:
+            limit_idx = [0, len(active_data.columns)-1]
+        else:
+            limit_idx = closest_index(x_limits, active_data.columns+0)
+
+        spectra_integrated = pd.DataFrame(
+            cumtrapz(active_data.iloc[:, limit_idx[0]:limit_idx[1]+1],
+                      x=active_data.columns[limit_idx[0]:limit_idx[1]+1]+0,
+                      initial=0),
+            index=active_data.index, columns=active_data.columns[limit_idx[0]:limit_idx[1]+1]
+            ).round(decimals=6)
+
+        return spectra_integrated
+
     def baseline_correction(self, mode='ModPoly', smoothing=True,
-                            transform=False, active_data=None, **kwargs):
+                            transform=False, active_data=None, apply=True,
+                            **kwargs):
         """
         Correct baseline with methods from pyPreprocessing.baseline_correction.
 
@@ -317,7 +352,8 @@ class spectroscopy_data:
         corrected_data = (active_data -
                           self.baseline_data[mode]).round(decimals=6)
 
-        self.spectral_data_processed = corrected_data
+        if apply:
+            self.spectral_data_processed = corrected_data
 
         return corrected_data
 
@@ -436,15 +472,6 @@ class spectroscopy_data:
             elif mode == modes[2]:  # 'sig_to_axis'
                 self.monochrome_data[modes[2]][str(wn)] = curr_sig
                 return self.monochrome_data[modes[2]]
-
-    def integrate_spectra(self, active_data=None):
-        active_data = self.check_active_data(active_data)
-
-        spectra_integrated = pd.DataFrame(
-            cumtrapz(active_data, x=active_data.columns+0, initial=0),
-            index=active_data.index, columns=active_data.columns
-            ).round(decimals=6)
-        return spectra_integrated
 
     def principal_component_analysis(self, pca_components,
                                      active_data=None):
