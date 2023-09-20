@@ -10,7 +10,7 @@ from tqdm import tqdm
 from scipy.integrate import cumtrapz, trapz
 # from sklearn.decomposition import PCA
 
-from little_helpers.array_tools import closest_index
+from little_helpers.array_tools import closest_index, y_at_x
 from pyPreprocessing.baseline_correction import generate_baseline
 from pyPreprocessing.smoothing import smoothing as smooth_data
 import pyPreprocessing.transform as transform
@@ -413,6 +413,13 @@ class spectroscopy_data:
 ####################################
 # spectrum analysis methods
 ####################################
+
+    def intensity_at_x(self, wavenumber, active_data=None):
+        active_data = self.check_active_data(active_data)
+        
+        intensities = y_at_x(wavenumber, active_data.columns.values, active_data.values.T)
+        closest_wn = closest_index(wavenumber, active_data.columns)
+        return intensities
 
     def univariate_analysis(self, mode, active_data=None, **kwargs):
         active_data = self.check_active_data(active_data)
