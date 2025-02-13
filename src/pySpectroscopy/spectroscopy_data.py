@@ -11,7 +11,7 @@ from scipy.integrate import cumulative_trapezoid, trapezoid
 # from sklearn.decomposition import PCA
 
 from little_helpers.array_tools import closest_index, y_at_x
-from pyPreprocessing.baseline_correction import generate_baseline
+from pyPreprocessing.baseline_correction import generate_baseline, correct_baseline
 from pyPreprocessing.smoothing import smoothing as smooth_data
 import pyPreprocessing.transform as transform
 import pyDataFitting.linear_regression as l_reg
@@ -71,17 +71,27 @@ class spectroscopy_data:
 
         elif self.data_source == 'import':
             self.file_names = self.kwargs.get('file_names')
+            self.skip_lines = self.kwargs.get('skip_lines', 0)
+            self.sep = self.kwargs.get('sep', ' ')
+            self.decimal = self.kwargs.get('decimal', '.')
+            self.sample_names = self.kwargs.get(
+                'sample_names', pd.Series(self.file_names).str.rsplit(
+                    '/', n=1, expand=True)[1])
 
-            wavenumbers = np.fromfile(self.file_names[0], sep=' ')[::2]
-            intensities = np.zeros((len(self.file_names), wavenumbers.size))
-            for idx, curr_file in enumerate(tqdm(self.file_names)):
-                intensities[idx] = np.fromfile(curr_file, sep=' ')[1::2]
-
-            fname_index = pd.Series(self.file_names).str.rsplit(
-                '/', n=1, expand=True)[1]
+            wavenumbers = pd.read_csv(
+                self.file_names[0], sep=self.sep, skiprows=self.skip_lines,
+                header=None, decimal=self.decimal, dtype=float).iloc[:, 0]
             self.spectral_data = pd.DataFrame(
-                intensities, index=fname_index,
-                columns=np.around(wavenumbers, 2))
+                [], columns=self.sample_names, index=wavenumbers)
+            for idx, curr_file in enumerate(self.file_names):
+                self.spectral_data.iloc[:, idx] = pd.read_csv(
+                    curr_file, sep=self.sep, skiprows=self.skip_lines,
+                    header=None, decimal=self.decimal, dtype=float).iloc[:, 1]
+
+            self.spectral_data = self.spectral_data.T
+            # self.spectral_data = pd.DataFrame(
+            #     intensities, index=fname_index,
+            #     columns=np.around(wavenumbers, 2))
 
         else:
             raise ValueError('Value of data_source not understood.')
@@ -304,8 +314,7 @@ class spectroscopy_data:
 
         return spectra_integrated
 
-    def baseline_correction(self, mode='ModPoly', smoothing=True,
-                            transform=False, active_data=None, apply=True,
+    def baseline_correction(self, mode='ModPoly', active_data=None, apply=True,
                             **kwargs):
         """
         Correct baseline with methods from pyPreprocessing.baseline_correction.
@@ -317,18 +326,18 @@ class spectroscopy_data:
         ----------
         mode : str, optional
             The baseline correction algorithm. Default is 'ModPoly'.
-        smoothing : bool, optional
-            True means the spectra are smoothed before baseline correction. The
-            default is True.
-        transform : bool, optional
-            True means the spectra are transformed before baseline correction.
-            The default is False.
         active_data : pandas DataFrame or None, optional
             None means that self.spectral_data is used for baseline correction.
             Alternatively, a pandas DataFrame in the same format as
             self.spectral_data can be passed that is used for the calculations.
             The default is None.
-        **kwargs
+        **kwargs for mode = 'direct'
+            baseline_data : pandas DataFrame
+                The baseline data subtracted from the spectra. The DataFrame
+                must have the same length like self.spectral_data has data
+                points per dataset, and the first column must contain a
+                baseline valid for all datasets.
+        **kwargs for all other modes
             All kwargs necessary for the respective baseline correction mode.
             If wavenumbers are needed for the calculations, these do not need
             to be given because they are already known. If they are passed
@@ -342,16 +351,20 @@ class spectroscopy_data:
         """
         active_data = self.check_active_data(active_data)
 
-        if mode in ['convex_hull', 'ModPoly', 'IModPoly', 'PPF', 'iALSS']:
-            kwargs['wavenumbers'] = active_data.columns.to_numpy()
+        if mode == 'direct':
+            self.baseline_data[mode] = kwargs.get('baseline_data').iloc[:, 0]
+        else:
+            if mode in ['convex_hull', 'ModPoly', 'IModPoly', 'PPF', 'iALSS']:
+                kwargs['wavenumbers'] = active_data.columns.to_numpy()
 
-        self.baseline_data[mode] = pd.DataFrame(
-            generate_baseline(active_data.values, mode, smoothing=True,
-                              transform=False, **kwargs),
+            self.baseline_data[mode] = pd.DataFrame(
+                generate_baseline(active_data.values, mode, **kwargs),
+                index=active_data.index, columns=active_data.columns)
+
+        corrected_data = pd.DataFrame(correct_baseline(
+            active_data.values, mode='direct',
+            baseline_data=self.baseline_data[mode].values),
             index=active_data.index, columns=active_data.columns)
-
-        corrected_data = (active_data -
-                          self.baseline_data[mode]).round(decimals=6)
 
         if apply:
             self.spectral_data_processed = corrected_data
@@ -422,6 +435,17 @@ class spectroscopy_data:
         closest_wn = closest_index(wavenumber, active_data.columns)
         return intensities
 
+    def find_max_values(self, wn_range, active_data=None):
+        # find the maximum absorption values with the corresponding wavenumber
+        # in the given wavenumber interval, given as a list of two numbers
+        active_data = self.check_active_data(active_data)
+        
+        data_slice = active_data.loc[:, wn_range[0]:wn_range[1]]
+        max_wn = data_slice.idxmax(axis=1)
+        max_value = data_slice.max(axis=1)
+        
+        return pd.DataFrame({'max_wn': max_wn, 'max_value': max_value}, index=active_data.index)
+
     def univariate_analysis(self, mode, active_data=None, **kwargs):
         active_data = self.check_active_data(active_data)
 
@@ -480,6 +504,11 @@ class spectroscopy_data:
             elif mode == modes[2]:  # 'sig_to_axis'
                 self.monochrome_data[modes[2]][str(wn)] = curr_sig
                 return self.monochrome_data[modes[2]]
+
+    def difference_spectra(self, reference=0, active_data=None):
+        active_data = self.check_active_data(active_data)
+        
+        return active_data - active_data.iloc[reference, :]
 
     def principal_component_analysis(self, pca_components,
                                      active_data=None):
