@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import scale
 from tqdm import tqdm
-from scipy.integrate import cumtrapz, trapz
+from scipy.integrate import cumulative_trapezoid, trapezoid
 # from sklearn.decomposition import PCA
 
 from little_helpers.array_tools import closest_index, y_at_x
@@ -295,9 +295,10 @@ class spectroscopy_data:
             limit_idx = closest_index(x_limits, active_data.columns+0)
 
         spectra_integrated = pd.DataFrame(
-            cumtrapz(active_data.iloc[:, limit_idx[0]:limit_idx[1]+1],
-                      x=active_data.columns[limit_idx[0]:limit_idx[1]+1]+0,
-                      initial=0),
+            cumulative_trapezoid(
+                active_data.iloc[:, limit_idx[0]:limit_idx[1]+1],
+                x=active_data.columns[limit_idx[0]:limit_idx[1]+1]+0,
+                initial=0),
             index=active_data.index, columns=active_data.columns[limit_idx[0]:limit_idx[1]+1]
             ).round(decimals=6)
 
@@ -465,7 +466,7 @@ class spectroscopy_data:
                     self.spectral_data_integrated.columns[
                         closest_index_upper]])
             baseline_y_array = active_data.loc[:, baseline_x_array]
-            self.area_under_baseline = trapz(
+            self.area_under_baseline = trapezoid(
                 baseline_y_array, x=baseline_x_array) if mode == modes[1] else 0
 
             curr_sig = (self.spectral_data_integrated.iloc[
