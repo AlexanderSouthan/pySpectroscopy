@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import glob
 import imageio
-import spc
+# import spc
 from tqdm import tqdm
 
 # import own modules#############################
@@ -102,24 +102,26 @@ class raman_image(spectroscopy_data, confocal_data):
                 intensities[index] = np.fromfile(
                     self.file_list.iloc[index, 0], sep=' ')[1::2]
 
-        # Inline_IR and LSM still have to get their own classes
-        elif self.measurement_type == 'Inline_IR':
-            spectrum_data = spc.File(self.file_list.iloc[0, 0])
-            number_of_spectra = len(spectrum_data.sub)
-            wavenumbers = spectrum_data.x
-            intensities = np.zeros((number_of_spectra, len(spectrum_data.x)))
-            time_data = np.zeros(number_of_spectra)
+        # # Inline_IR and LSM still have to get their own classes
+        # # This is temporarily removed due to absence of well accessible
+        # # package for spc spectra import
+        # elif self.measurement_type == 'Inline_IR':
+        #     spectrum_data = spc.File(self.file_list.iloc[0, 0])
+        #     number_of_spectra = len(spectrum_data.sub)
+        #     wavenumbers = spectrum_data.x
+        #     intensities = np.zeros((number_of_spectra, len(spectrum_data.x)))
+        #     time_data = np.zeros(number_of_spectra)
 
-            for index, curr_spec in enumerate(tqdm(spectrum_data.sub)):
-                intensities[index, :] = curr_spec.y
-                time_data[index] = curr_spec.subtime
+        #     for index, curr_spec in enumerate(tqdm(spectrum_data.sub)):
+        #         intensities[index, :] = curr_spec.y
+        #         time_data[index] = curr_spec.subtime
 
-            self.file_list = self.file_list.loc[
-                self.file_list.index.repeat(number_of_spectra)].reset_index(
-                    drop=True)
-            self.file_list.iloc[:, 1] = (pd.Series(time_data) *
-                                         self.coord_conversion_factor).astype(
-                                             int)
+        #     self.file_list = self.file_list.loc[
+        #         self.file_list.index.repeat(number_of_spectra)].reset_index(
+        #             drop=True)
+        #     self.file_list.iloc[:, 1] = (pd.Series(time_data) *
+        #                                  self.coord_conversion_factor).astype(
+        #                                      int)
 
         # Is still experimental, especially correct coordinates are missing and
         # possibly not working for not square images

@@ -1,4 +1,4 @@
-name: pyAnalytics
+name: pySpectroscopy
 dependencies:
   - numpy
   - matplotlib
@@ -13,4 +13,4 @@ dependencies:
     - little_helpers
     - pyPreprocessing
     - pyDataFitting
-    - git+https://github.com/rohanisaac/spc@master#egg=spc
+#    - git+https://github.com/rohanisaac/spc@master#egg=spc
